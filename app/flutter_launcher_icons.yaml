@@ -1,0 +1,7 @@
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/branding/backpack_logo.png
+  adaptive_icon_background: "#0E7490"
+  adaptive_icon_foreground: assets/branding/backpack_logo.png
+  remove_alpha_ios: true

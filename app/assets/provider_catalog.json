@@ -1,0 +1,29 @@
+{
+  "providers": [
+    {
+      "label": "Kaggle",
+      "description": "Current user profile proof",
+      "providerId": "kaggle.current_user.v1"
+    },
+    {
+      "label": "Deel",
+      "description": "Paystubs transaction proof",
+      "providerId": "deel.paystubs.v1"
+    },
+    {
+      "label": "Gusto",
+      "description": "Employee company name proof",
+      "providerId": "gusto.employees.v1"
+    },
+    {
+      "label": "Uber Past Rides",
+      "description": "Past rides activities proof",
+      "providerId": "uber.past_activities.v1"
+    },
+    {
+      "label": "Aadhaar Profile",
+      "description": "Aadhaar demographics profile",
+      "providerId": "aadhaar.demographics.v1"
+    }
+  ]
+}

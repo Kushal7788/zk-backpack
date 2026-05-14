@@ -1,0 +1,63 @@
+# ── Secrets / local config ────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.keystore
+*.jks
+
+# ── Runtime data (proofs, share tokens, audit logs, blobs) ───────────────
+data/
+**/data/audit.jsonl
+**/data/proofs.json
+**/data/shares.json
+**/data/proof_blobs/
+share_service/data/
+
+# ── OS / editor ──────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+
+# ── Node (share_service) ─────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ── Flutter / Dart (app) ─────────────────────────────────────────────────
+app/.dart_tool/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/.packages
+app/.pub-cache/
+app/.pub/
+app/build/
+app/coverage/
+app/pubspec.lock
+**/doc/api/
+**/ios/Flutter/.last_build_id
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Flutter/Generated.xcconfig
+**/android/.gradle/
+**/android/local.properties
+**/android/app/debug/
+**/android/app/profile/
+**/android/app/release/
+**/android/captures/
+**/android/key.properties
+app.*.symbols
+app.*.map.json
+
+# ── Build outputs ────────────────────────────────────────────────────────
+/build/
+/dist/

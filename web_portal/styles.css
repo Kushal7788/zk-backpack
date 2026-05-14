@@ -1,0 +1,110 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  background: #0b1221;
+  color: #e2e8f0;
+}
+
+.container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.card {
+  width: 100%;
+  max-width: 860px;
+  background: #111a2e;
+  border: 1px solid #25324d;
+  border-radius: 14px;
+  padding: 20px;
+}
+
+.muted {
+  color: #94a3b8;
+}
+
+.token-row {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.token-input {
+  flex: 1;
+  background: #020617;
+  color: #e2e8f0;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.primary-btn,
+.secondary-btn {
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primary-btn {
+  background: #2563eb;
+  color: #eff6ff;
+}
+
+.secondary-btn {
+  background: #1e293b;
+  color: #e2e8f0;
+}
+
+.primary-btn:disabled,
+.secondary-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.status {
+  margin: 14px 0;
+  padding: 10px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.status-pending {
+  background: #1e293b;
+  color: #f8fafc;
+}
+
+.status-valid {
+  background: #052e16;
+  color: #bbf7d0;
+}
+
+.status-blocked {
+  background: #450a0a;
+  color: #fecaca;
+}
+
+.panel {
+  background: #020617;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  padding: 12px;
+  overflow: auto;
+  min-height: 100px;
+  font-size: 12px;
+}
+
+.receipt-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
