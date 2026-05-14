@@ -1,0 +1,32 @@
+# Render Blueprint for zk_backpack web_portal.
+#
+# Drop this file unchanged at the repo root if you want one-click Render
+# deploys via the Blueprints UI. For a manual deploy via the web UI,
+# the values below mirror what you'd enter by hand.
+#
+# Cost: Render's free Web Service tier (no card required).
+# Limitations of the free tier:
+#   - Service spins down after 15 minutes idle (~30 s cold start to wake).
+#   - No persistent disk (this portal is stateless so that's fine).
+#   - 750 hrs/mo across all your free services.
+
+services:
+  - type: web
+    name: zk-backpack-web-portal
+    runtime: node
+    plan: free
+    rootDir: web_portal
+    buildCommand: ""
+    startCommand: node server.js
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: SHARE_SERVICE_URL
+        value: https://zk-backpack-share-service.fly.dev
+      # Render auto-sets BASE_URL via the onrender.com hostname it assigns.
+      # If you want to override it (e.g. you wire a custom domain), uncomment
+      # and edit the line below.
+      # - key: BASE_URL
+      #   value: https://zk-backpack-web-portal.onrender.com
+      - key: NODE_VERSION
+        value: "20"

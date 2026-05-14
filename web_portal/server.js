@@ -54,6 +54,16 @@ async function route(req, res) {
     sendAsset(res, 200, css, 'text/css; charset=utf-8');
     return;
   }
+  // Vendored copy of Vue 3 — keeping the portal self-contained means no CDN
+  // dependency and no CSP allow-list for third-party origins.
+  if (req.method === 'GET' && pathname === '/vendor/vue.global.prod.js') {
+    const js = await fs.readFile(
+      path.join(__dirname, 'vendor', 'vue.global.prod.js'),
+      'utf8'
+    );
+    sendAsset(res, 200, js, 'application/javascript; charset=utf-8');
+    return;
+  }
 
   if (req.method === 'GET' && pathname.startsWith('/s/')) {
     const token = sanitizeToken(pathname.split('/')[2]);
@@ -114,9 +124,14 @@ function sendHtml(res, html, statusCode = 200) {
     'x-content-type-options': 'nosniff',
     'x-frame-options': 'DENY',
     'referrer-policy': 'no-referrer',
+    // `unsafe-eval` is required by Vue 3's runtime template compiler — it
+    // uses `new Function(...)` to turn the inline `template:` string into a
+    // render function on first mount. All recipient-visible data flows
+    // through Vue's text interpolation (never v-html for untrusted values),
+    // so the eval surface is limited to our own hardcoded template.
     'content-security-policy':
       `default-src 'self'; ` +
-      `script-src 'self' https://unpkg.com 'unsafe-inline'; ` +
+      `script-src 'self' 'unsafe-inline' 'unsafe-eval'; ` +
       `style-src 'self' 'unsafe-inline'; ` +
       `img-src 'self' data:; ` +
       `connect-src ${connectSrc}; ` +

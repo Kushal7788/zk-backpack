@@ -35,13 +35,20 @@ then calls back into the `share_service` API across origins.
 
 ```
 web_portal/
-├── package.json         # ESM, "start": "node server.js"
-├── server.js            # standalone HTTP server (no deps)
-├── index.html           # Vue 3 mount point, runtime config injection
-├── app.js               # Vue setup, cross-origin fetch, rendering
-├── styles.css           # light + dark via prefers-color-scheme
+├── package.json                       # ESM, "start": "node server.js"
+├── server.js                          # standalone HTTP server (no deps)
+├── index.html                         # Vue 3 mount point + runtime config
+├── app.js                             # Vue setup, cross-origin fetch, rendering
+├── styles.css                         # light + dark via prefers-color-scheme
+├── vendor/
+│   └── vue.global.prod.js             # Vue 3.5.34, served same-origin
 └── .env.example
 ```
+
+Vue is **bundled into the repo** rather than loaded from a CDN.
+That keeps the portal self-contained (no network race on first paint,
+no third-party CSP allow-list, no surprises behind corporate firewalls
+or content blockers).
 
 No build step. The portal stays auditable as three small files that go
 on the wire as-is.
@@ -82,6 +89,62 @@ fetches from the portal go through CORS preflight. The share service
 ships with `CORS_ALLOWED_ORIGIN=*` by default; lock it down to the
 exact portal origin in production. See
 `../share_service/.env.example`.
+
+## Deploy on Render.com
+
+The repo ships a `render.yaml` at the root, so the recommended path is
+the **Blueprint** flow:
+
+1. Sign up at https://render.com (no credit card required for free tier).
+2. Dashboard → **New** → **Blueprint**.
+3. Connect the GitHub repo `zk_backpack`. Render auto-detects
+   `render.yaml` and shows a preview of one service:
+   `zk-backpack-web-portal`, free plan, rooted at `web_portal/`.
+4. Confirm. First deploy starts immediately.
+
+Once it's live (~2 min), Render assigns it a URL like
+`https://zk-backpack-web-portal.onrender.com`. Then tell the share
+service about it so QR codes point at the right place:
+
+```bash
+flyctl secrets set \
+  PORTAL_BASE_URL="https://zk-backpack-web-portal.onrender.com" \
+  -a zk-backpack-share-service
+```
+
+That triggers an auto-redeploy of share_service. From this point on,
+every share token minted by the mobile app gets a recipient URL on
+your Render-hosted portal that fetches data from your Fly-hosted API.
+
+### Manual web-UI alternative
+
+If you don't want to use the Blueprint, the equivalent manual flow:
+
+1. Dashboard → **New** → **Web Service** → connect repo.
+2. **Name:** anything (becomes the subdomain).
+3. **Region:** closest to your users.
+4. **Branch:** main.
+5. **Root Directory:** `web_portal`
+6. **Runtime:** Node
+7. **Build Command:** (leave blank — zero dependencies)
+8. **Start Command:** `node server.js`
+9. **Environment Variables:**
+   - `SHARE_SERVICE_URL` = `https://zk-backpack-share-service.fly.dev`
+10. **Plan:** Free → **Create Web Service**.
+
+### Free-tier limitations to know
+
+| | |
+|---|---|
+| Cold starts | Service spins down after 15 min idle, ~30 s to wake on next request |
+| Persistent disk | None — but the portal is **stateless**, so this is fine |
+| Bandwidth | 100 GB/mo, far more than a demo needs |
+| Custom domain | Supported on free tier; auto Let's Encrypt cert |
+
+The 30-second cold start is the only practical wart. Acceptable for a
+demo where occasional recipients open a link; not great if you expect
+sub-second response. Render's **Starter** plan ($7/mo) removes the
+spin-down if it ever matters.
 
 ## Mobile + LAN access
 
