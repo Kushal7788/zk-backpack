@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'models.dart';
+import 'share_selection.dart';
 
 class ShareServiceClient {
   ShareServiceClient({
@@ -45,6 +46,7 @@ class ShareServiceClient {
     required int expiresInMinutes,
     required bool oneTimeView,
     required int? maxViews,
+    ShareSelection? selection,
   }) async {
     final uri = Uri.parse('$baseUrl/shares');
     final response = await _httpClient.post(
@@ -56,6 +58,8 @@ class ShareServiceClient {
         'expiresInMinutes': expiresInMinutes,
         'oneTimeView': oneTimeView,
         'maxViews': maxViews,
+        if (selection != null && !selection.isEmpty)
+          'selection': selection.toJson(),
       }),
     );
     final body = _readJsonBody(response);
@@ -85,6 +89,19 @@ class ShareServiceClient {
     final response = await _httpClient.get(uri, headers: _headers());
     final body = _readJsonBody(response);
     return ShareViewResponse.fromJson(body);
+  }
+
+  Future<ReceiptVerifyResult> verifyReceiptSignature({
+    required String signature,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/share/receipt/verify');
+    final response = await _httpClient.post(
+      uri,
+      headers: _headers(),
+      body: jsonEncode(<String, Object?>{'signature': signature}),
+    );
+    final body = _readJsonBody(response);
+    return ReceiptVerifyResult.fromJson(body);
   }
 
   Map<String, String> _headers() {

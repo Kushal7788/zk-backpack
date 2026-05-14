@@ -138,6 +138,10 @@ class ShareViewResponse {
   final String status;
   final String message;
   final Map<String, Object?> verification;
+  // Server-projected claims. Has shape:
+  //   { "fields": {label: value, ...},
+  //     "predicates": [ {label, expression, satisfied, evaluable, reason?} ] }
+  // Older shares without selection still return a flat field map.
   final Map<String, Object?> scopedClaims;
   final Map<String, Object?> receipt;
 
@@ -157,7 +161,47 @@ class ShareViewResponse {
     );
   }
 
+  Map<String, Object?> get revealedFields {
+    final fields = scopedClaims['fields'];
+    if (fields is Map<String, Object?>) return fields;
+    // Backward compat: legacy shares stored claims flat.
+    if (scopedClaims.containsKey('predicates') ||
+        scopedClaims.containsKey('fields')) {
+      return const <String, Object?>{};
+    }
+    return scopedClaims;
+  }
+
+  List<Map<String, Object?>> get revealedPredicates {
+    final raw = scopedClaims['predicates'];
+    if (raw is List) {
+      return raw.whereType<Map<String, Object?>>().toList(growable: false);
+    }
+    return const <Map<String, Object?>>[];
+  }
+
   String prettyScopedClaims() {
     return const JsonEncoder.withIndent('  ').convert(scopedClaims);
+  }
+}
+
+class ReceiptVerifyResult {
+  const ReceiptVerifyResult({
+    required this.ok,
+    required this.message,
+    this.payload,
+  });
+
+  final bool ok;
+  final String message;
+  final Map<String, Object?>? payload;
+
+  factory ReceiptVerifyResult.fromJson(Map<String, Object?> json) {
+    final raw = json['payload'];
+    return ReceiptVerifyResult(
+      ok: json['ok'] == true,
+      message: (json['message'] as String?) ?? '',
+      payload: raw is Map<String, Object?> ? raw : null,
+    );
   }
 }

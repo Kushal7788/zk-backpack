@@ -3,6 +3,8 @@ import path from 'node:path';
 
 import { randomToken } from './crypto.js';
 
+const SAFE_ID = /^[A-Za-z0-9._:@\-]+$/;
+
 async function ensureDir(dir) {
   await fs.mkdir(dir, { recursive: true });
 }
@@ -17,7 +19,34 @@ async function readJson(filePath, fallbackValue) {
 }
 
 async function writeJson(filePath, value) {
-  await fs.writeFile(filePath, JSON.stringify(value, null, 2));
+  const dir = path.dirname(filePath);
+  const tmp = path.join(
+    dir,
+    `.${path.basename(filePath)}.${process.pid}.${Date.now()}.tmp`
+  );
+  await fs.writeFile(tmp, JSON.stringify(value, null, 2));
+  await fs.rename(tmp, filePath);
+}
+
+const writeQueue = new Map();
+
+function serializeWrites(key, task) {
+  const previous = writeQueue.get(key) ?? Promise.resolve();
+  const next = previous.catch(() => null).then(task);
+  // The tracker swallows results so storing it in the queue cannot
+  // create an unhandled-rejection event when the caller is the only
+  // consumer of `next`.
+  const tracker = next.then(
+    () => null,
+    () => null
+  );
+  writeQueue.set(key, tracker);
+  tracker.finally(() => {
+    if (writeQueue.get(key) === tracker) {
+      writeQueue.delete(key);
+    }
+  });
+  return next;
 }
 
 export class FileStore {
@@ -37,17 +66,33 @@ export class FileStore {
     await appendFileIfMissing(this.auditPath);
   }
 
+  blobPathFor(proofId) {
+    if (!SAFE_ID.test(String(proofId))) {
+      throw new Error('unsafe proof id');
+    }
+    const resolved = path.resolve(this.blobDir, `${proofId}.json`);
+    if (!resolved.startsWith(`${this.blobDir}${path.sep}`)) {
+      throw new Error('proof id resolves outside blob dir');
+    }
+    return resolved;
+  }
+
   async saveEncryptedProof(record, encryptedPayload) {
-    const proofs = await readJson(this.proofDbPath, {});
-    const blobPath = path.join(this.blobDir, `${record.proofId}.json`);
-    await writeJson(blobPath, encryptedPayload);
-    proofs[record.proofId] = {
-      ...record,
-      blobPath,
-      createdAtUtc: new Date().toISOString()
-    };
-    await writeJson(this.proofDbPath, proofs);
-    return proofs[record.proofId];
+    if (!SAFE_ID.test(String(record.proofId))) {
+      throw new Error('unsafe proof id');
+    }
+    return serializeWrites(this.proofDbPath, async () => {
+      const proofs = await readJson(this.proofDbPath, {});
+      const blobPath = this.blobPathFor(record.proofId);
+      await writeJson(blobPath, encryptedPayload);
+      proofs[record.proofId] = {
+        ...record,
+        blobPath,
+        createdAtUtc: new Date().toISOString()
+      };
+      await writeJson(this.proofDbPath, proofs);
+      return proofs[record.proofId];
+    });
   }
 
   async getProof(proofId) {
@@ -56,7 +101,11 @@ export class FileStore {
   }
 
   async getEncryptedBlob(blobPath) {
-    return readJson(blobPath, null);
+    const resolved = path.resolve(String(blobPath));
+    if (!resolved.startsWith(`${this.blobDir}${path.sep}`)) {
+      return null;
+    }
+    return readJson(resolved, null);
   }
 
   async createShare({
@@ -65,26 +114,33 @@ export class FileStore {
     policyTemplate,
     expiresInMinutes,
     oneTimeView,
-    maxViews
+    maxViews,
+    selection
   }) {
-    const shares = await readJson(this.shareDbPath, {});
-    const token = randomToken(24);
-    const createdAt = Date.now();
-    const expiresAt = createdAt + expiresInMinutes * 60 * 1000;
-    shares[token] = {
-      token,
-      ownerId,
-      proofId,
-      policyTemplate,
-      createdAtUtc: new Date(createdAt).toISOString(),
-      expiresAtUtc: new Date(expiresAt).toISOString(),
-      oneTimeView: Boolean(oneTimeView),
-      maxViews: maxViews ?? null,
-      views: 0,
-      revoked: false
-    };
-    await writeJson(this.shareDbPath, shares);
-    return shares[token];
+    return serializeWrites(this.shareDbPath, async () => {
+      const shares = await readJson(this.shareDbPath, {});
+      let token;
+      do {
+        token = randomToken(24);
+      } while (shares[token]);
+      const createdAt = Date.now();
+      const expiresAt = createdAt + expiresInMinutes * 60 * 1000;
+      shares[token] = {
+        token,
+        ownerId,
+        proofId,
+        policyTemplate,
+        selection: selection ?? null,
+        createdAtUtc: new Date(createdAt).toISOString(),
+        expiresAtUtc: new Date(expiresAt).toISOString(),
+        oneTimeView: Boolean(oneTimeView),
+        maxViews: maxViews ?? null,
+        views: 0,
+        revoked: false
+      };
+      await writeJson(this.shareDbPath, shares);
+      return shares[token];
+    });
   }
 
   async getShare(token) {
@@ -93,31 +149,38 @@ export class FileStore {
   }
 
   async revokeShare({ token, ownerId }) {
-    const shares = await readJson(this.shareDbPath, {});
-    const share = shares[token];
-    if (!share) {
-      return null;
-    }
-    if (share.ownerId !== ownerId) {
-      throw new Error('forbidden');
-    }
-    share.revoked = true;
-    share.revokedAtUtc = new Date().toISOString();
-    shares[token] = share;
-    await writeJson(this.shareDbPath, shares);
-    return share;
+    return serializeWrites(this.shareDbPath, async () => {
+      const shares = await readJson(this.shareDbPath, {});
+      const share = shares[token];
+      if (!share) {
+        return null;
+      }
+      if (share.ownerId !== ownerId) {
+        throw new Error('forbidden');
+      }
+      if (share.revoked) {
+        return share;
+      }
+      share.revoked = true;
+      share.revokedAtUtc = new Date().toISOString();
+      shares[token] = share;
+      await writeJson(this.shareDbPath, shares);
+      return share;
+    });
   }
 
   async consumeShareView(token) {
-    const shares = await readJson(this.shareDbPath, {});
-    const share = shares[token];
-    if (!share) {
-      return null;
-    }
-    share.views = Number(share.views ?? 0) + 1;
-    shares[token] = share;
-    await writeJson(this.shareDbPath, shares);
-    return share;
+    return serializeWrites(this.shareDbPath, async () => {
+      const shares = await readJson(this.shareDbPath, {});
+      const share = shares[token];
+      if (!share) {
+        return null;
+      }
+      share.views = Number(share.views ?? 0) + 1;
+      shares[token] = share;
+      await writeJson(this.shareDbPath, shares);
+      return share;
+    });
   }
 
   async appendAudit(event) {

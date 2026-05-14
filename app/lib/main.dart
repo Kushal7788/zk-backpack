@@ -4,13 +4,15 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:mobile_proof_plugin/mobile_tlsn_plugin.dart';
+import 'package:mobile_proof_plugin/mobile_proof_plugin.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'src/app_config.dart';
 import 'src/local_store.dart';
 import 'src/models.dart';
+import 'src/selection_evaluator.dart';
+import 'src/share_selection.dart';
 import 'src/share_service_client.dart';
 
 const _brandLogoAssetPath = 'assets/branding/backpack_logo.png';
@@ -321,6 +323,32 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
     try {
       _showInfoSnack('Preparing secure share...');
       final decryptedJson = await _store.decryptProofArtifactJson(record);
+      final decoded = jsonDecode(decryptedJson);
+      final revealedBody = resolveRevealedBody(decoded);
+      if (revealedBody.isEmpty) {
+        _showErrorSnack('This proof has no revealed fields to share.');
+        return;
+      }
+      if (!mounted) {
+        return;
+      }
+      final ShareSelection? selection = await showModalBottomSheet<ShareSelection>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        showDragHandle: true,
+        builder: (sheetContext) {
+          return _ShareSelectionSheet(revealedBody: revealedBody);
+        },
+      );
+      if (selection == null) {
+        return;
+      }
+      if (selection.isEmpty) {
+        _showErrorSnack('Pick at least one field or predicate to share.');
+        return;
+      }
+      _showInfoSnack('Uploading encrypted proof...');
       final cloudProofId = await _shareClient.uploadProof(
         record: record,
         artifactJson: decryptedJson,
@@ -332,10 +360,11 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
       );
       final shareResult = await _shareClient.createShare(
         proofId: record.proofId,
-        policyTemplate: 'masked',
+        policyTemplate: 'selection',
         expiresInMinutes: 60,
         oneTimeView: false,
         maxViews: 10,
+        selection: selection,
       );
       await _store.updateCloudShareState(
         proofId: record.proofId,
@@ -351,6 +380,8 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
         context: context,
         builder: (context) {
           final scheme = Theme.of(context).colorScheme;
+          final mediaWidth = MediaQuery.of(context).size.width;
+          final double qrSide = (mediaWidth.clamp(220.0, 320.0) - 80).toDouble();
           return Dialog(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 360),
@@ -383,9 +414,12 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                         child: Padding(
                           padding: const EdgeInsets.all(10),
                           child: SizedBox(
-                            width: 210,
-                            height: 210,
-                            child: QrImageView(data: shareResult.url),
+                            width: qrSide,
+                            height: qrSide,
+                            child: QrImageView(
+                              data: shareResult.url,
+                              backgroundColor: Colors.white,
+                            ),
                           ),
                         ),
                       ),
@@ -425,6 +459,46 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
       );
     } catch (error) {
       _showErrorSnack('Share failed: $error');
+    }
+  }
+
+  Future<void> _confirmAndDelete(ProofRecord record) async {
+    final providerLabel = _providerLabel(record.providerId);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Delete proof?'),
+          content: Text(
+            'This will permanently remove the proof from "$providerLabel" on this device. '
+            'Active share links will keep working until they expire or you revoke them.',
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton.tonal(
+              style: FilledButton.styleFrom(
+                foregroundColor: Theme.of(dialogContext).colorScheme.onErrorContainer,
+                backgroundColor: Theme.of(dialogContext).colorScheme.errorContainer,
+              ),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true) {
+      return;
+    }
+    try {
+      await _store.deleteProof(record.proofId);
+      await _reloadProofs();
+      _showInfoSnack('Proof removed from this device.');
+    } catch (error) {
+      _showErrorSnack('Could not delete proof: $error');
     }
   }
 
@@ -537,7 +611,7 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
               .map(
                 (entry) => _DisplayEntry(
                   label: _prettifyKey(entry.key),
-                  value: _printableValue(entry.value),
+                  value: prettifyValue(entry.value),
                 ),
               )
               .toList(growable: false);
@@ -646,24 +720,7 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
     return jsonEncode(value);
   }
 
-  String _prettifyKey(String key) {
-    var cleaned = key.trim();
-    if (cleaned.startsWith(r'$.')) {
-      cleaned = cleaned.substring(2);
-    }
-    final pathParts = cleaned
-        .split('.')
-        .where((part) => part.trim().isNotEmpty)
-        .toList(growable: false);
-    final source = pathParts.isEmpty ? cleaned : pathParts.last;
-    final words = source
-        .replaceAll(RegExp(r'[^a-zA-Z0-9]+'), ' ')
-        .replaceAll(RegExp(r'([a-z])([A-Z])'), r'$1 $2')
-        .split(' ')
-        .where((word) => word.trim().isNotEmpty)
-        .map((word) => '${word[0].toUpperCase()}${word.substring(1)}');
-    return words.join(' ');
-  }
+  String _prettifyKey(String key) => prettifyKey(key);
 
   String _providerLabel(String providerId) {
     return _providerById[providerId]?.label ?? providerId;
@@ -1113,11 +1170,7 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                       const SizedBox(width: 6),
                       IconButton.filledTonal(
                         tooltip: 'Delete proof',
-                        onPressed: () async {
-                          await _store.deleteProof(proof.proofId);
-                          await _reloadProofs();
-                          _showInfoSnack('Proof removed from this device.');
-                        },
+                        onPressed: () => _confirmAndDelete(proof),
                         style: IconButton.styleFrom(
                           minimumSize: const Size(34, 34),
                           padding: const EdgeInsets.all(6),
@@ -1271,20 +1324,61 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                 const SizedBox(height: 6),
                 Text(result.message),
                 const SizedBox(height: 12),
-                Text(
-                  'Revealed Claims',
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                const SizedBox(height: 8),
-                ..._extractRevealedEntries(result.scopedClaims).map(
-                  (entry) => Padding(
-                    padding: const EdgeInsets.only(bottom: 7),
-                    child: _LabeledValueRow(
-                      label: entry.label,
-                      value: entry.value,
+                if (result.revealedFields.isNotEmpty) ...<Widget>[
+                  Text(
+                    'Revealed Fields',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  ...result.revealedFields.entries.map(
+                    (entry) => Padding(
+                      padding: const EdgeInsets.only(bottom: 7),
+                      child: _LabeledValueRow(
+                        label: prettifyKey(entry.key),
+                        value: prettifyValue(entry.value),
+                      ),
                     ),
                   ),
-                ),
+                ],
+                if (result.revealedPredicates.isNotEmpty) ...<Widget>[
+                  const SizedBox(height: 6),
+                  Text(
+                    'Predicates',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  ...result.revealedPredicates.map(
+                    (predicate) => Padding(
+                      padding: const EdgeInsets.only(bottom: 7),
+                      child: _PredicateRow(predicate: predicate),
+                    ),
+                  ),
+                ],
+                if (result.revealedFields.isEmpty &&
+                    result.revealedPredicates.isEmpty) ...<Widget>[
+                  Text(
+                    'Revealed Claims',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  ..._extractRevealedEntries(result.scopedClaims).map(
+                    (entry) => Padding(
+                      padding: const EdgeInsets.only(bottom: 7),
+                      child: _LabeledValueRow(
+                        label: entry.label,
+                        value: entry.value,
+                      ),
+                    ),
+                  ),
+                ],
+                if ((result.receipt['signature'] as String?)?.isNotEmpty ==
+                    true) ...<Widget>[
+                  const SizedBox(height: 14),
+                  _ReceiptVerifyTile(
+                    signature: result.receipt['signature'] as String,
+                    shareClient: _shareClient,
+                  ),
+                ],
               ],
             ),
           ),
@@ -1393,4 +1487,724 @@ class _ProofPresentation {
   final List<_DisplayEntry> revealedEntries;
   final String targetEndpoint;
   final bool loadedSuccessfully;
+}
+
+String _printableValue(Object? value) {
+  if (value == null) return '';
+  if (value is String) return value;
+  if (value is num || value is bool) return value.toString();
+  return jsonEncode(value);
+}
+
+String prettifyKey(String key) {
+  var cleaned = key.trim();
+  // Repair labels that were stored by the buggy pre-fix version: the
+  // camelCase split used replaceAll with `$1 $2`, which Dart treats as
+  // literal text rather than a back-reference. Strip the leftover
+  // `$1 $2` token so historical share records still display readably.
+  cleaned = cleaned.replaceAll(RegExp(r'\$1\s*\$2'), '');
+  if (cleaned.startsWith(r'$.')) cleaned = cleaned.substring(2);
+  final parts = cleaned
+      .split('.')
+      .where((part) => part.trim().isNotEmpty)
+      .toList(growable: false);
+  final source = parts.isEmpty ? cleaned : parts.last;
+  final words = source
+      .replaceAll(RegExp(r'[^a-zA-Z0-9]+'), ' ')
+      .replaceAllMapped(RegExp(r'([a-z])([A-Z])'), (m) => '${m[1]} ${m[2]}')
+      .split(' ')
+      .where((word) => word.trim().isNotEmpty)
+      .map((word) => '${word[0].toUpperCase()}${word.substring(1)}');
+  return words.join(' ');
+}
+
+String prettifyValue(Object? value) {
+  if (value == null) return '';
+  if (value is num || value is bool) return value.toString();
+  if (value is String) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return '';
+    final humanDate = _humanizeIsoDate(trimmed);
+    if (humanDate != null) return humanDate;
+    return trimmed;
+  }
+  return jsonEncode(value);
+}
+
+String? _humanizeIsoDate(String input) {
+  // Match an ISO-8601 date or datetime. Accepts:
+  //   2024-03-09
+  //   2024-03-09T15:26:40Z
+  //   2024-03-09T15:26:40.023Z
+  //   2024-03-09T15:26:40.023+05:30
+  final pattern = RegExp(
+    r'^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d{1,6})?)?(Z|[+-]\d{2}:?\d{2})?)?$',
+  );
+  if (!pattern.hasMatch(input)) return null;
+  final parsed = DateTime.tryParse(input);
+  if (parsed == null) return null;
+  final local = parsed.toLocal();
+  const months = <String>[
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+  final dateOnly = !input.contains('T');
+  final month = months[local.month - 1];
+  if (dateOnly) {
+    return '$month ${local.day}, ${local.year}';
+  }
+  final hour12 = local.hour % 12 == 0 ? 12 : local.hour % 12;
+  final minute = local.minute.toString().padLeft(2, '0');
+  final ampm = local.hour < 12 ? 'AM' : 'PM';
+  return '$month ${local.day}, ${local.year}, $hour12:$minute $ampm';
+}
+
+class _ShareSelectionSheet extends StatefulWidget {
+  const _ShareSelectionSheet({required this.revealedBody});
+
+  final Map<String, Object?> revealedBody;
+
+  @override
+  State<_ShareSelectionSheet> createState() => _ShareSelectionSheetState();
+}
+
+class _ShareSelectionSheetState extends State<_ShareSelectionSheet> {
+  late final List<String> _orderedPaths;
+  late final Map<String, bool> _fieldSelected;
+  final List<RevealPredicate> _predicates = <RevealPredicate>[];
+  int _predicateCounter = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _orderedPaths = widget.revealedBody.keys.toList(growable: false);
+    _fieldSelected = <String, bool>{for (final path in _orderedPaths) path: false};
+  }
+
+  bool get _hasDob => _orderedPaths.any(_looksLikeDob);
+  bool _looksLikeDob(String path) {
+    final lower = path.toLowerCase();
+    return lower.contains('dob') || lower.endsWith('.birth') ||
+        lower.contains('birthdate') || lower.contains('dateofbirth');
+  }
+
+  String? get _suggestedDobPath {
+    for (final path in _orderedPaths) {
+      if (_looksLikeDob(path)) return path;
+    }
+    return null;
+  }
+
+  void _addPredicate(RevealPredicate predicate) {
+    setState(() {
+      _predicates.add(predicate);
+    });
+  }
+
+  Future<void> _editPredicate({RevealPredicate? existing}) async {
+    final RevealPredicate? built = await showDialog<RevealPredicate>(
+      context: context,
+      builder: (dialogContext) {
+        return _PredicateEditorDialog(
+          revealedBody: widget.revealedBody,
+          paths: _orderedPaths,
+          initial: existing,
+          nextId: 'p${++_predicateCounter}',
+        );
+      },
+    );
+    if (built == null) return;
+    setState(() {
+      if (existing != null) {
+        final index = _predicates.indexWhere((p) => p.id == existing.id);
+        if (index >= 0) {
+          _predicates[index] = built;
+        } else {
+          _predicates.add(built);
+        }
+      } else {
+        _predicates.add(built);
+      }
+    });
+  }
+
+  ShareSelection _currentSelection() {
+    final fields = <RevealField>[];
+    for (final path in _orderedPaths) {
+      if (_fieldSelected[path] == true) {
+        fields.add(RevealField(path: path, label: prettifyKey(path)));
+      }
+    }
+    return ShareSelection(fields: fields, predicates: _predicates);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final selection = _currentSelection();
+    final preview = evaluateSelection(selection, widget.revealedBody);
+    final dobPath = _suggestedDobPath;
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+        top: 4,
+      ),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                'Choose what to share',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Only the fields and predicates you select will be shown to anyone who scans the QR.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'Fields to reveal',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: 6),
+              ..._orderedPaths.map((path) {
+                final value = widget.revealedBody[path];
+                final selected = _fieldSelected[path] ?? false;
+                return CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  value: selected,
+                  onChanged: (next) {
+                    setState(() {
+                      _fieldSelected[path] = next ?? false;
+                    });
+                  },
+                  title: Text(prettifyKey(path)),
+                  subtitle: Text(
+                    prettifyValue(value),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              }),
+              const SizedBox(height: 12),
+              Row(
+                children: <Widget>[
+                  Text(
+                    'Predicates',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const Spacer(),
+                  TextButton.icon(
+                    onPressed: () => _editPredicate(),
+                    icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
+                    label: const Text('Add predicate'),
+                  ),
+                ],
+              ),
+              if (_hasDob)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: <Widget>[
+                      for (final threshold in const [18, 21, 60])
+                        ActionChip(
+                          label: Text('Age ≥ $threshold'),
+                          onPressed: () {
+                            _addPredicate(
+                              RevealPredicate(
+                                id: 'p${++_predicateCounter}',
+                                label: 'Age over $threshold',
+                                sourcePath: dobPath!,
+                                transform: 'dateToYearsTillNow',
+                                op: '>=',
+                                value: threshold,
+                              ),
+                            );
+                          },
+                        ),
+                    ],
+                  ),
+                ),
+              if (_predicates.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Text(
+                    'No predicates added.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              ..._predicates.map((predicate) {
+                final evaluation = evaluatePredicate(predicate, widget.revealedBody);
+                final color = !evaluation.evaluable
+                    ? scheme.outline
+                    : evaluation.satisfied
+                        ? scheme.primary
+                        : scheme.error;
+                return Card(
+                  margin: const EdgeInsets.symmetric(vertical: 4),
+                  child: ListTile(
+                    leading: Icon(
+                      !evaluation.evaluable
+                          ? Icons.help_outline
+                          : evaluation.satisfied
+                              ? Icons.check_circle_rounded
+                              : Icons.cancel_rounded,
+                      color: color,
+                    ),
+                    title: Text(predicate.label),
+                    subtitle: Text(
+                      evaluation.reason ?? evaluation.expression,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    trailing: Wrap(
+                      spacing: 4,
+                      children: <Widget>[
+                        IconButton(
+                          tooltip: 'Edit',
+                          icon: const Icon(Icons.edit_outlined, size: 18),
+                          onPressed: () => _editPredicate(existing: predicate),
+                        ),
+                        IconButton(
+                          tooltip: 'Remove',
+                          icon: const Icon(Icons.close_rounded, size: 18),
+                          onPressed: () {
+                            setState(() {
+                              _predicates.removeWhere((p) => p.id == predicate.id);
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+              const SizedBox(height: 14),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Preview',
+                        style: Theme.of(context).textTheme.labelLarge,
+                      ),
+                      const SizedBox(height: 4),
+                      if (preview.fields.isEmpty && preview.predicates.isEmpty)
+                        Text(
+                          'Nothing selected yet.',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ...preview.fields.map(
+                        (field) => Text(
+                          '• ${field.label}: ${_printableValue(field.value)}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                      ...preview.predicates.map(
+                        (predicate) => Text(
+                          '• ${predicate.label}: ${predicate.satisfied ? 'true' : (predicate.evaluable ? 'false' : 'unknown')}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: selection.isEmpty
+                          ? null
+                          : () => Navigator.of(context).pop(selection),
+                      child: const Text('Share QR'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PredicateEditorDialog extends StatefulWidget {
+  const _PredicateEditorDialog({
+    required this.revealedBody,
+    required this.paths,
+    required this.nextId,
+    this.initial,
+  });
+
+  final Map<String, Object?> revealedBody;
+  final List<String> paths;
+  final String nextId;
+  final RevealPredicate? initial;
+
+  @override
+  State<_PredicateEditorDialog> createState() => _PredicateEditorDialogState();
+}
+
+class _PredicateEditorDialogState extends State<_PredicateEditorDialog> {
+  static const _transforms = <String, String>{
+    'identity': 'value as-is',
+    'dateToYearsTillNow': 'date → years since',
+    'parseNumber': 'parse as number',
+    'length': 'character count',
+    'digitsOnly': 'digits only',
+  };
+  static const _operators = <String>[
+    '==', '!=', '>', '>=', '<', '<=', 'between', 'contains', 'startsWith', 'endsWith',
+  ];
+
+  late String _path;
+  late String _transform;
+  late String _op;
+  late TextEditingController _labelController;
+  late TextEditingController _valueController;
+  late TextEditingController _value2Controller;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initial;
+    _path = initial?.sourcePath ?? widget.paths.first;
+    _transform = initial?.transform ?? _autoTransform(_path);
+    _op = initial?.op ?? '>=';
+    _labelController = TextEditingController(text: initial?.label ?? _autoLabel());
+    _valueController = TextEditingController(text: initial?.value?.toString() ?? '');
+    _value2Controller = TextEditingController(text: initial?.value2?.toString() ?? '');
+  }
+
+  String _autoTransform(String path) {
+    final lower = path.toLowerCase();
+    if (lower.contains('dob') ||
+        lower.contains('birth') ||
+        lower.contains('date') ||
+        lower.contains('joined') ||
+        lower.contains('createdat')) {
+      return 'dateToYearsTillNow';
+    }
+    final value = widget.revealedBody[path];
+    if (value is String && double.tryParse(value) != null) return 'parseNumber';
+    return 'identity';
+  }
+
+  String _autoLabel() {
+    final pretty = prettifyKey(_path);
+    if (_transform == 'dateToYearsTillNow') return 'Years since $pretty';
+    return '$pretty ${_op == 'contains' ? 'contains value' : 'satisfies condition'}';
+  }
+
+  @override
+  void dispose() {
+    _labelController.dispose();
+    _valueController.dispose();
+    _value2Controller.dispose();
+    super.dispose();
+  }
+
+  Object _parseValue(String raw) {
+    final trimmed = raw.trim();
+    final asNum = num.tryParse(trimmed);
+    if (asNum != null) return asNum;
+    if (trimmed.toLowerCase() == 'true') return true;
+    if (trimmed.toLowerCase() == 'false') return false;
+    return trimmed;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isBetween = _op == 'between';
+    return AlertDialog(
+      title: Text(widget.initial == null ? 'Add Predicate' : 'Edit Predicate'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            DropdownButtonFormField<String>(
+              initialValue: _path,
+              decoration: const InputDecoration(labelText: 'Source field'),
+              items: widget.paths
+                  .map(
+                    (path) => DropdownMenuItem<String>(
+                      value: path,
+                      child: Text(prettifyKey(path)),
+                    ),
+                  )
+                  .toList(growable: false),
+              onChanged: (next) {
+                if (next == null) return;
+                setState(() {
+                  _path = next;
+                  _transform = _autoTransform(next);
+                  _labelController.text = _autoLabel();
+                });
+              },
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              initialValue: _transform,
+              decoration: const InputDecoration(labelText: 'Transform'),
+              items: _transforms.entries
+                  .map(
+                    (entry) => DropdownMenuItem<String>(
+                      value: entry.key,
+                      child: Text(entry.value),
+                    ),
+                  )
+                  .toList(growable: false),
+              onChanged: (next) {
+                if (next == null) return;
+                setState(() {
+                  _transform = next;
+                });
+              },
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              initialValue: _op,
+              decoration: const InputDecoration(labelText: 'Operator'),
+              items: _operators
+                  .map(
+                    (op) => DropdownMenuItem<String>(value: op, child: Text(op)),
+                  )
+                  .toList(growable: false),
+              onChanged: (next) {
+                if (next == null) return;
+                setState(() {
+                  _op = next;
+                });
+              },
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _valueController,
+              decoration: InputDecoration(
+                labelText: isBetween ? 'Lower bound' : 'Compared value',
+              ),
+            ),
+            if (isBetween) ...<Widget>[
+              const SizedBox(height: 8),
+              TextField(
+                controller: _value2Controller,
+                decoration: const InputDecoration(labelText: 'Upper bound'),
+              ),
+            ],
+            const SizedBox(height: 8),
+            TextField(
+              controller: _labelController,
+              decoration: const InputDecoration(labelText: 'Display label'),
+            ),
+          ],
+        ),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final predicate = RevealPredicate(
+              id: widget.initial?.id ?? widget.nextId,
+              label: _labelController.text.trim().isEmpty
+                  ? _autoLabel()
+                  : _labelController.text.trim(),
+              sourcePath: _path,
+              transform: _transform,
+              op: _op,
+              value: _parseValue(_valueController.text),
+              value2: isBetween ? _parseValue(_value2Controller.text) : null,
+            );
+            Navigator.of(context).pop(predicate);
+          },
+          child: const Text('Save'),
+        ),
+      ],
+    );
+  }
+}
+
+class _PredicateRow extends StatelessWidget {
+  const _PredicateRow({required this.predicate});
+
+  final Map<String, Object?> predicate;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final satisfied = predicate['satisfied'] == true;
+    final evaluable = predicate['evaluable'] != false;
+    final label = (predicate['label'] as String?) ?? 'Predicate';
+    final expression = (predicate['expression'] as String?) ?? '';
+    final reason = (predicate['reason'] as String?) ?? '';
+    final color = !evaluable
+        ? scheme.outline
+        : satisfied
+            ? scheme.primary
+            : scheme.error;
+    return Container(
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      child: Row(
+        children: <Widget>[
+          Icon(
+            !evaluable
+                ? Icons.help_outline
+                : satisfied
+                    ? Icons.check_circle_rounded
+                    : Icons.cancel_rounded,
+            color: color,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(label, style: Theme.of(context).textTheme.labelMedium),
+                const SizedBox(height: 3),
+                Text(
+                  reason.isNotEmpty ? reason : expression,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          Text(
+            !evaluable
+                ? 'unknown'
+                : satisfied
+                    ? 'true'
+                    : 'false',
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(color: color),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReceiptVerifyTile extends StatefulWidget {
+  const _ReceiptVerifyTile({required this.signature, required this.shareClient});
+
+  final String signature;
+  final ShareServiceClient shareClient;
+
+  @override
+  State<_ReceiptVerifyTile> createState() => _ReceiptVerifyTileState();
+}
+
+class _ReceiptVerifyTileState extends State<_ReceiptVerifyTile> {
+  bool _busy = false;
+  ReceiptVerifyResult? _result;
+
+  Future<void> _verify() async {
+    setState(() {
+      _busy = true;
+      _result = null;
+    });
+    try {
+      final result = await widget.shareClient.verifyReceiptSignature(
+        signature: widget.signature,
+      );
+      if (!mounted) return;
+      setState(() {
+        _result = result;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _result = ReceiptVerifyResult(ok: false, message: error.toString());
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final result = _result;
+    return Container(
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      padding: const EdgeInsets.all(10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            'Receipt signature',
+            style: Theme.of(context).textTheme.labelMedium,
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: <Widget>[
+              if (result != null)
+                Icon(
+                  result.ok
+                      ? Icons.verified_user_rounded
+                      : Icons.gpp_bad_rounded,
+                  color: result.ok ? scheme.primary : scheme.error,
+                ),
+              if (result != null) const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  result == null
+                      ? 'Tap to verify HMAC signature on the service receipt.'
+                      : result.message.isNotEmpty
+                          ? result.message
+                          : (result.ok ? 'Signature verified' : 'Invalid signature'),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+              const SizedBox(width: 6),
+              FilledButton.tonal(
+                onPressed: _busy ? null : _verify,
+                child: Text(_busy ? '...' : 'Verify'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
