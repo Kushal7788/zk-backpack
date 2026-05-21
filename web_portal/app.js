@@ -85,6 +85,26 @@ function humanDate(iso) {
   }
 }
 
+function shortHash(value) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  return raw.length <= 16 ? raw : `${raw.slice(0, 10)}...${raw.slice(-6)}`;
+}
+
+function formatDurationUntil(iso) {
+  if (!iso) return '';
+  const expires = new Date(iso);
+  if (Number.isNaN(expires.getTime())) return humanDate(iso);
+  const diffMs = expires.getTime() - Date.now();
+  if (diffMs <= 0) return 'Expired';
+  const minutes = Math.ceil(diffMs / 60000);
+  if (minutes < 90) return `${minutes} minute${minutes === 1 ? '' : 's'}`;
+  const hours = Math.ceil(minutes / 60);
+  if (hours < 36) return `${hours} hour${hours === 1 ? '' : 's'}`;
+  const days = Math.ceil(hours / 24);
+  return `${days} day${days === 1 ? '' : 's'}`;
+}
+
 // Inline SVG strings.
 const ICON_CHECK =
   '<svg class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="8 12.5 11 15.5 16.5 9.5"/></svg>';
@@ -119,6 +139,7 @@ createApp({
     const verification = ref({});
     const claims = ref({});
     const receipt = ref({});
+    const share = ref({});
     const verifiedAt = ref('');
     const targetHost = ref('');
 
@@ -156,7 +177,7 @@ createApp({
       if (kind === 'valid') {
         const host = targetHost.value;
         return host
-          ? `This proof was issued by ${host} and is valid.`
+          ? `This proof was verified against ${host}.`
           : 'This proof is valid.';
       }
       const detail = (message.value || '').trim();
@@ -230,6 +251,98 @@ createApp({
       });
     });
 
+    const trustPanelVisible = computed(
+      () => phase.value === 'resolved' && statusKind.value === 'valid'
+    );
+
+    const satisfiedPredicateCount = computed(
+      () => predicates.value.filter((predicate) => predicate.satisfied).length
+    );
+
+    const conditionSummary = computed(() => {
+      const total = predicates.value.length;
+      if (!total) return 'No conditions requested';
+      const satisfied = satisfiedPredicateCount.value;
+      return `${satisfied}/${total} condition${total === 1 ? '' : 's'} met`;
+    });
+
+    const revealedSummary = computed(() => {
+      const fieldCount = fields.value.length;
+      const conditionCount = predicates.value.length;
+      if (!fieldCount && !conditionCount) return 'No claims released';
+      const parts = [];
+      if (fieldCount) {
+        parts.push(`${fieldCount} field${fieldCount === 1 ? '' : 's'}`);
+      }
+      if (conditionCount) {
+        parts.push(`${conditionCount} condition${conditionCount === 1 ? '' : 's'}`);
+      }
+      return `${parts.join(' + ')} released`;
+    });
+
+    const sharePolicySummary = computed(() => {
+      const current = share.value || {};
+      const parts = [];
+      if (current.oneTimeView) parts.push('One-time link');
+      if (current.maxViews != null) {
+        const max = Number(current.maxViews);
+        if (Number.isFinite(max)) {
+          parts.push(`Up to ${max} view${max === 1 ? '' : 's'}`);
+        }
+      }
+      if (current.expiresAtUtc) {
+        const duration = formatDurationUntil(current.expiresAtUtc);
+        parts.push(
+          duration === 'Expired'
+            ? 'Expired'
+            : `Expires in ${duration}`
+        );
+      }
+      if (parts.length) return parts.join(' · ');
+      return 'Share policy active';
+    });
+
+    const trustRows = computed(() => {
+      const rows = [
+        {
+          label: 'Verification',
+          value: 'Server-verified TLSNotary proof'
+        },
+        {
+          label: 'Released',
+          value: revealedSummary.value
+        },
+        {
+          label: 'Conditions',
+          value: conditionSummary.value
+        },
+        {
+          label: 'Policy',
+          value: sharePolicySummary.value
+        }
+      ];
+      if (targetHost.value) {
+        rows.splice(1, 0, {
+          label: 'Source',
+          value: targetHost.value
+        });
+      }
+      if (verifiedAt.value) {
+        rows.push({
+          label: 'Verified at',
+          value: humanDate(verifiedAt.value)
+        });
+      }
+      const hash = receipt.value && receipt.value.artifactHash;
+      if (hash) {
+        rows.push({
+          label: 'Artifact hash',
+          value: shortHash(hash)
+        });
+      }
+      return rows;
+    });
+
     const metaLine = computed(() => {
       const at = verifiedAt.value;
       const host = targetHost.value;
@@ -256,6 +369,7 @@ createApp({
         verification.value = {};
         claims.value = {};
         receipt.value = {};
+        share.value = {};
         verifiedAt.value = '';
         targetHost.value = '';
         receiptVerification.value = null;
@@ -267,6 +381,7 @@ createApp({
       verification.value = {};
       claims.value = {};
       receipt.value = {};
+      share.value = {};
       verifiedAt.value = '';
       targetHost.value = '';
       receiptVerification.value = null;
@@ -280,6 +395,7 @@ createApp({
         verification.value = payload.verification ?? {};
         claims.value = payload.scopedClaims ?? {};
         receipt.value = payload.receipt ?? {};
+        share.value = payload.share ?? {};
         verifiedAt.value =
           (payload.receipt && payload.receipt.verifiedAt) || '';
         // Best-effort issuer/target host extraction.
@@ -357,6 +473,7 @@ createApp({
       tokenInput,
       inputVisible,
       receipt,
+      share,
       receiptVerification,
       receiptVerifyBusy,
       copyState,
@@ -367,6 +484,8 @@ createApp({
       statusIcon,
       fields,
       predicates,
+      trustPanelVisible,
+      trustRows,
       metaLine,
       verificationJson,
       receiptJson,
@@ -422,6 +541,23 @@ createApp({
             {{ phase === 'loading' ? 'Verifying…' : 'Verify' }}
           </button>
         </form>
+      </section>
+
+      <section class="card trust-panel" v-if="trustPanelVisible">
+        <div class="section-label">Verification summary</div>
+        <div class="trust-head">
+          <div>
+            <div class="trust-title">Verified proof</div>
+            <div class="trust-subtitle">Only selected claims were released.</div>
+          </div>
+          <span class="trust-badge">Receipt available</span>
+        </div>
+        <div class="trust-grid">
+          <div v-for="row in trustRows" :key="row.label" class="trust-row">
+            <div class="trust-label">{{ row.label }}</div>
+            <div class="trust-value">{{ row.value }}</div>
+          </div>
+        </div>
       </section>
 
       <section class="card" v-if="phase !== 'idle'">

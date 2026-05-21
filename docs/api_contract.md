@@ -67,3 +67,19 @@ Runs server-side decrypt + verify and returns scoped claims and receipt.
 ## GET `/api/share/view?token=...`
 
 Resolve + verify convenience endpoint for browser portal.
+
+Successful responses include a non-sensitive `share` summary for recipient
+display:
+
+```json
+{
+  "status": "valid",
+  "share": {
+    "policyTemplate": "selection",
+    "expiresAtUtc": "2026-05-07T11:00:00Z",
+    "oneTimeView": true,
+    "maxViews": 1,
+    "views": 1
+  }
+}
+```

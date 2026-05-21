@@ -201,6 +201,80 @@ details + .footer {
   border-style: dashed;
 }
 
+/* Trust panel */
+
+.trust-panel {
+  animation: fade-in 200ms ease-out forwards;
+}
+
+.trust-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.trust-title {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.trust-subtitle {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.trust-badge {
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: var(--success-bg);
+  color: var(--success-text);
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.trust-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.trust-row {
+  display: grid;
+  grid-template-columns: minmax(104px, 0.36fr) 1fr;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.trust-label {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.trust-value {
+  min-width: 0;
+  color: var(--text);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 460px) {
+  .trust-head {
+    flex-direction: column;
+  }
+
+  .trust-row {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}
+
 @keyframes pulse {
   0%, 100% {
     opacity: 0.3;

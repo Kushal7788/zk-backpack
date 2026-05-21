@@ -354,11 +354,22 @@ async function verifyToken(token) {
         : verifier.reason ?? 'Proof verification failed',
       verification: verifier,
       scopedClaims,
+      share: summarizeShare(viewAfter ?? share),
       receipt: {
         ...receiptPayload,
         signature: receiptToken
       }
     }
+  };
+}
+
+function summarizeShare(share) {
+  return {
+    policyTemplate: share.policyTemplate,
+    expiresAtUtc: share.expiresAtUtc,
+    oneTimeView: Boolean(share.oneTimeView),
+    maxViews: share.maxViews ?? null,
+    views: Number(share.views ?? 0)
   };
 }
 
