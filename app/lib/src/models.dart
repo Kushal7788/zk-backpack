@@ -7,17 +7,35 @@ class ProviderConfig {
     required this.label,
     required this.description,
     required this.providerId,
+    this.category = 'General',
+    this.iconKey = 'proof',
+    this.recipeIds = const <String>[],
   });
 
   final String label;
   final String description;
   final String providerId;
+  final String category;
+  final String iconKey;
+  final List<String> recipeIds;
 
   factory ProviderConfig.fromJson(Map<String, Object?> json) {
+    final recipeIds = (json['recipeIds'] as List<Object?>? ?? const [])
+        .whereType<String>()
+        .map((id) => id.trim())
+        .where((id) => id.isNotEmpty)
+        .toList(growable: false);
     return ProviderConfig(
       label: (json['label'] as String?)?.trim() ?? 'Unknown',
       description: (json['description'] as String?)?.trim() ?? '',
       providerId: (json['providerId'] as String?)?.trim() ?? '',
+      category: (json['category'] as String?)?.trim().isNotEmpty == true
+          ? (json['category'] as String).trim()
+          : 'General',
+      iconKey: (json['iconKey'] as String?)?.trim().isNotEmpty == true
+          ? (json['iconKey'] as String).trim()
+          : 'proof',
+      recipeIds: recipeIds,
     );
   }
 }

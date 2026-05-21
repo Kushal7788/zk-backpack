@@ -42,6 +42,14 @@ const _sharePolicyPresets = <SharePolicyPreset>[
     maxViews: 100,
   ),
 ];
+const _categoryOrder = <String>[
+  'Identity',
+  'Work',
+  'Money',
+  'Travel',
+  'Reputation',
+  'General',
+];
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -808,6 +816,85 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
     return _providerById[providerId]?.label ?? providerId;
   }
 
+  String _providerCategory(String providerId) {
+    final category = _providerById[providerId]?.category.trim();
+    return category == null || category.isEmpty ? 'General' : category;
+  }
+
+  IconData _iconForKey(String iconKey) {
+    switch (iconKey) {
+      case 'identity':
+        return Icons.badge_outlined;
+      case 'work':
+        return Icons.business_center_outlined;
+      case 'money':
+        return Icons.account_balance_wallet_outlined;
+      case 'travel':
+        return Icons.airport_shuttle_outlined;
+      case 'reputation':
+        return Icons.workspace_premium_outlined;
+      default:
+        return Icons.inventory_2_outlined;
+    }
+  }
+
+  IconData _iconForCategory(String category) {
+    for (final provider in _providers) {
+      if (provider.category == category) {
+        return _iconForKey(provider.iconKey);
+      }
+    }
+    switch (category) {
+      case 'Identity':
+        return Icons.badge_outlined;
+      case 'Work':
+        return Icons.business_center_outlined;
+      case 'Money':
+        return Icons.account_balance_wallet_outlined;
+      case 'Travel':
+        return Icons.airport_shuttle_outlined;
+      case 'Reputation':
+        return Icons.workspace_premium_outlined;
+      default:
+        return Icons.inventory_2_outlined;
+    }
+  }
+
+  List<String> _orderedCategoryKeys(Iterable<String> categories) {
+    final unique = categories
+        .where((category) => category.trim().isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+    unique.sort((a, b) {
+      final aIndex = _categoryOrder.indexOf(a);
+      final bIndex = _categoryOrder.indexOf(b);
+      if (aIndex >= 0 && bIndex >= 0) return aIndex.compareTo(bIndex);
+      if (aIndex >= 0) return -1;
+      if (bIndex >= 0) return 1;
+      return a.compareTo(b);
+    });
+    return unique;
+  }
+
+  Map<String, List<ProviderConfig>> _providersByCategory() {
+    final grouped = <String, List<ProviderConfig>>{};
+    for (final provider in _providers) {
+      grouped
+          .putIfAbsent(provider.category, () => <ProviderConfig>[])
+          .add(provider);
+    }
+    return grouped;
+  }
+
+  Map<String, List<ProofRecord>> _proofsByCategory() {
+    final grouped = <String, List<ProofRecord>>{};
+    for (final proof in _proofs) {
+      final category = _providerCategory(proof.providerId);
+      grouped.putIfAbsent(category, () => <ProofRecord>[]).add(proof);
+    }
+    return grouped;
+  }
+
   void _toggleProofExpanded(String proofId) {
     setState(() {
       if (_expandedProofIds.contains(proofId)) {
@@ -926,6 +1013,8 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
 
   Widget _buildGenerateTab() {
     final provider = _selectedProvider;
+    final groupedProviders = _providersByCategory();
+    final categories = _orderedCategoryKeys(groupedProviders.keys);
     return SingleChildScrollView(
       child: Center(
         child: ConstrainedBox(
@@ -948,64 +1037,32 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                       const SizedBox(height: 18),
-                      DropdownButtonFormField<ProviderConfig>(
-                        initialValue: provider,
-                        decoration: const InputDecoration(
-                          labelText: 'Provider',
-                          prefixIcon: Icon(Icons.inventory_2_outlined),
+                      for (final category in categories) ...<Widget>[
+                        _CategoryHeader(
+                          icon: _iconForCategory(category),
+                          title: category,
+                          subtitle:
+                              '${groupedProviders[category]!.length} source${groupedProviders[category]!.length == 1 ? '' : 's'}',
                         ),
-                        selectedItemBuilder: (context) {
-                          return _providers
-                              .map(
-                                (item) => Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Text(
-                                    item.label,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              )
-                              .toList(growable: false);
-                        },
-                        items: _providers
-                            .map(
-                              (item) => DropdownMenuItem<ProviderConfig>(
-                                value: item,
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: <Widget>[
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: <Widget>[
-                                          Text(item.label),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            item.description,
-                                            style: Theme.of(
-                                              context,
-                                            ).textTheme.bodySmall,
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            )
-                            .toList(growable: false),
-                        onChanged: _running
-                            ? null
-                            : (value) {
+                        const SizedBox(height: 8),
+                        ...groupedProviders[category]!.map(
+                          (item) => Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: _ProviderChoiceTile(
+                              provider: item,
+                              selected: provider?.providerId == item.providerId,
+                              enabled: !_running,
+                              icon: _iconForKey(item.iconKey),
+                              onTap: () {
                                 setState(() {
-                                  _selectedProvider = value;
+                                  _selectedProvider = item;
                                 });
                               },
-                      ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
                       if (provider != null) ...<Widget>[
                         const SizedBox(height: 14),
                         Container(
@@ -1146,13 +1203,33 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
         ),
       );
     }
+    final groupedProofs = _proofsByCategory();
+    final categories = _orderedCategoryKeys(groupedProofs.keys);
+    final entries = <Object>[];
+    for (final category in categories) {
+      entries
+        ..add(category)
+        ..addAll(groupedProofs[category]!);
+    }
     return Stack(
       children: <Widget>[
         ListView.separated(
-          itemCount: _proofs.length,
+          itemCount: entries.length,
           separatorBuilder: (context, index) => const SizedBox(height: 10),
           itemBuilder: (context, index) {
-            final proof = _proofs[index];
+            final entry = entries[index];
+            if (entry is String) {
+              final count = groupedProofs[entry]!.length;
+              return Padding(
+                padding: EdgeInsets.only(top: index == 0 ? 0 : 6),
+                child: _CategoryHeader(
+                  icon: _iconForCategory(entry),
+                  title: entry,
+                  subtitle: '$count proof${count == 1 ? '' : 's'}',
+                ),
+              );
+            }
+            final proof = entry as ProofRecord;
             final view = _proofPresentationById[proof.proofId];
             final providerLabel = _providerLabel(proof.providerId);
             final expanded = _expandedProofIds.contains(proof.proofId);
@@ -1212,6 +1289,8 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  _ProofLifecycleTimeline(record: proof),
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
@@ -1477,6 +1556,108 @@ class _SectionCard extends StatelessWidget {
   }
 }
 
+class _CategoryHeader extends StatelessWidget {
+  const _CategoryHeader({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Row(
+      children: <Widget>[
+        Icon(icon, size: 18, color: scheme.primary),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(title, style: Theme.of(context).textTheme.titleSmall),
+        ),
+        Text(
+          subtitle,
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+        ),
+      ],
+    );
+  }
+}
+
+class _ProviderChoiceTile extends StatelessWidget {
+  const _ProviderChoiceTile({
+    required this.provider,
+    required this.selected,
+    required this.enabled,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final ProviderConfig provider;
+  final bool selected;
+  final bool enabled;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final borderColor = selected ? scheme.primary : scheme.outlineVariant;
+    final background = selected
+        ? scheme.primaryContainer.withValues(alpha: 0.38)
+        : scheme.surfaceContainerLowest;
+    return InkWell(
+      onTap: enabled ? onTap : null,
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: borderColor),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Icon(
+              icon,
+              size: 20,
+              color: selected ? scheme.primary : scheme.outline,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    provider.label,
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    provider.description,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            if (selected) ...<Widget>[
+              const SizedBox(width: 8),
+              Icon(Icons.check_circle_rounded, size: 18, color: scheme.primary),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ShareStatusPill extends StatelessWidget {
   const _ShareStatusPill({required this.status});
 
@@ -1512,6 +1693,128 @@ class _ShareStatusPill extends StatelessWidget {
             fontSize: 12,
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ProofLifecycleTimeline extends StatelessWidget {
+  const _ProofLifecycleTimeline({required this.record});
+
+  final ProofRecord record;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = record.shareStatus;
+    final uploaded =
+        record.cloudProofId != null ||
+        status == 'uploaded' ||
+        status == 'shared' ||
+        status == 'revoked';
+    final shared =
+        record.shareToken != null || status == 'shared' || status == 'revoked';
+    final revoked = status == 'revoked';
+    final steps = <_LifecycleStepData>[
+      _LifecycleStepData(
+        label: 'Local',
+        icon: Icons.lock_outline_rounded,
+        completed: true,
+        current: status == 'local_only',
+      ),
+      _LifecycleStepData(
+        label: 'Uploaded',
+        icon: Icons.cloud_done_outlined,
+        completed: uploaded,
+        current: status == 'uploaded',
+      ),
+      _LifecycleStepData(
+        label: 'Shared',
+        icon: Icons.ios_share_rounded,
+        completed: shared,
+        current: status == 'shared',
+      ),
+      _LifecycleStepData(
+        label: 'Revoked',
+        icon: Icons.block_rounded,
+        completed: revoked,
+        current: revoked,
+        destructive: true,
+      ),
+    ];
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      child: Row(
+        children: <Widget>[
+          for (var i = 0; i < steps.length; i++) ...<Widget>[
+            Expanded(child: _LifecycleStep(data: steps[i])),
+            if (i != steps.length - 1)
+              Container(
+                width: 12,
+                height: 1,
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _LifecycleStepData {
+  const _LifecycleStepData({
+    required this.label,
+    required this.icon,
+    required this.completed,
+    required this.current,
+    this.destructive = false,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool completed;
+  final bool current;
+  final bool destructive;
+}
+
+class _LifecycleStep extends StatelessWidget {
+  const _LifecycleStep({required this.data});
+
+  final _LifecycleStepData data;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final activeColor = data.destructive ? scheme.error : scheme.primary;
+    final color = data.completed ? activeColor : scheme.outline;
+    final background = data.current
+        ? activeColor.withValues(alpha: 0.14)
+        : Colors.transparent;
+    return Container(
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(data.icon, size: 16, color: color),
+          const SizedBox(height: 3),
+          Text(
+            data.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: color,
+              fontWeight: data.current ? FontWeight.w700 : FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }

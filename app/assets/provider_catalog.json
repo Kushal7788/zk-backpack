@@ -3,27 +3,42 @@
     {
       "label": "Kaggle",
       "description": "Current user profile proof",
-      "providerId": "kaggle.current_user.v1"
+      "providerId": "kaggle.current_user.v1",
+      "category": "Reputation",
+      "iconKey": "reputation",
+      "recipeIds": ["account_ownership", "developer_reputation"]
     },
     {
       "label": "Deel",
       "description": "Paystubs transaction proof",
-      "providerId": "deel.paystubs.v1"
+      "providerId": "deel.paystubs.v1",
+      "category": "Money",
+      "iconKey": "money",
+      "recipeIds": ["income_threshold"]
     },
     {
       "label": "Gusto",
       "description": "Employee company name proof",
-      "providerId": "gusto.employees.v1"
+      "providerId": "gusto.employees.v1",
+      "category": "Work",
+      "iconKey": "work",
+      "recipeIds": ["employment_status"]
     },
     {
       "label": "Uber Past Rides",
       "description": "Past rides activities proof",
-      "providerId": "uber.past_activities.v1"
+      "providerId": "uber.past_activities.v1",
+      "category": "Travel",
+      "iconKey": "travel",
+      "recipeIds": ["travel_activity"]
     },
     {
       "label": "Aadhaar Profile",
       "description": "Aadhaar demographics profile",
-      "providerId": "aadhaar.demographics.v1"
+      "providerId": "aadhaar.demographics.v1",
+      "category": "Identity",
+      "iconKey": "identity",
+      "recipeIds": ["age_gate_21"]
     }
   ]
 }
