@@ -1,0 +1,139 @@
+{
+  "recipes": [
+    {
+      "id": "age_gate_21",
+      "label": "Prove I am 21+",
+      "category": "Identity",
+      "providerIds": ["aadhaar.demographics.v1"],
+      "description": "Share only whether your age is at least 21.",
+      "selection": {
+        "fields": [],
+        "predicates": [
+          {
+            "id": "age_21",
+            "label": "Age is at least 21",
+            "sourcePath": "$.responseData.dob",
+            "transform": "dateToYearsTillNow",
+            "op": ">=",
+            "value": 21
+          }
+        ]
+      }
+    },
+    {
+      "id": "employment_status",
+      "label": "Prove employment",
+      "category": "Work",
+      "providerIds": ["gusto.employees.v1"],
+      "description": "Share your employer name and prove the employment record exists.",
+      "selection": {
+        "fields": [
+          {
+            "path": "$.responseData.companyName",
+            "label": "Employer"
+          }
+        ],
+        "predicates": [
+          {
+            "id": "employment_exists",
+            "label": "Employment record exists",
+            "sourcePath": "$.responseData.companyName",
+            "transform": "identity",
+            "op": "truthy",
+            "value": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "income_threshold",
+      "label": "Prove income range",
+      "category": "Money",
+      "providerIds": ["deel.paystubs.v1"],
+      "description": "Prove pay is above a threshold without revealing the exact value.",
+      "selection": {
+        "fields": [],
+        "predicates": [
+          {
+            "id": "pay_above_threshold",
+            "label": "Pay is at least 1000",
+            "sourcePath": "$.responseData.amount",
+            "transform": "parseNumber",
+            "op": ">=",
+            "value": 1000
+          }
+        ]
+      }
+    },
+    {
+      "id": "account_ownership",
+      "label": "Prove account ownership",
+      "category": "Reputation",
+      "providerIds": ["kaggle.current_user.v1"],
+      "description": "Share the public profile handle and prove the account exists.",
+      "selection": {
+        "fields": [
+          {
+            "path": "$.responseData.username",
+            "label": "Username"
+          }
+        ],
+        "predicates": [
+          {
+            "id": "account_exists",
+            "label": "Account exists",
+            "sourcePath": "$.responseData.username",
+            "transform": "identity",
+            "op": "truthy",
+            "value": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "travel_activity",
+      "label": "Prove ride activity",
+      "category": "Travel",
+      "providerIds": ["uber.past_activities.v1"],
+      "description": "Prove the account has ride activity without revealing the full trip history.",
+      "selection": {
+        "fields": [],
+        "predicates": [
+          {
+            "id": "ride_activity_exists",
+            "label": "Ride activity exists",
+            "sourcePath": "$.responseData.activities",
+            "transform": "length",
+            "op": ">",
+            "value": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "developer_reputation",
+      "label": "Prove developer reputation",
+      "category": "Reputation",
+      "providerIds": ["kaggle.current_user.v1"],
+      "description": "Share a public profile signal from a developer or data science account.",
+      "selection": {
+        "fields": [
+          {
+            "path": "$.responseData.displayName",
+            "label": "Display name"
+          }
+        ],
+        "predicates": [
+          {
+            "id": "profile_exists",
+            "label": "Profile exists",
+            "sourcePath": "$.responseData.displayName",
+            "transform": "identity",
+            "op": "truthy",
+            "value": true
+          }
+        ]
+      }
+    }
+  ]
+}

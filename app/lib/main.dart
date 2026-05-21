@@ -123,6 +123,7 @@ class ZkBackpackHomePage extends StatefulWidget {
 
 class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
   static const _providerCatalogAssetPath = 'assets/provider_catalog.json';
+  static const _shareRecipesAssetPath = 'assets/share_recipes.json';
   static const _providerRegistryAssetPath =
       'packages/mobile_proof_plugin/assets/providers.json';
 
@@ -136,6 +137,7 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
   List<ProviderConfig> _providers = const <ProviderConfig>[];
   Map<String, ProviderConfig> _providerById = const <String, ProviderConfig>{};
   ProviderConfig? _selectedProvider;
+  List<ShareRecipe> _shareRecipes = const <ShareRecipe>[];
   List<ProofRecord> _proofs = const <ProofRecord>[];
   Map<String, _ProofPresentation> _proofPresentationById =
       const <String, _ProofPresentation>{};
@@ -168,6 +170,7 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
     try {
       await _store.init();
       await _loadProviderCatalog();
+      await _loadShareRecipes();
       await _reloadProofs();
       _statusMessage = 'Ready';
     } catch (error) {
@@ -197,6 +200,22 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
         for (final provider in providers) provider.providerId: provider,
       };
       _selectedProvider = providers.isEmpty ? null : providers.first;
+    });
+  }
+
+  Future<void> _loadShareRecipes() async {
+    final raw = await rootBundle.loadString(_shareRecipesAssetPath);
+    final decoded = jsonDecode(raw) as Map<String, Object?>;
+    final recipes = (decoded['recipes'] as List<Object?>? ?? const [])
+        .whereType<Map<String, Object?>>()
+        .map(ShareRecipe.fromJson)
+        .where((recipe) => recipe.id.isNotEmpty && !recipe.selection.isEmpty)
+        .toList(growable: false);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _shareRecipes = recipes;
     });
   }
 
@@ -364,7 +383,13 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
         useSafeArea: true,
         showDragHandle: true,
         builder: (sheetContext) {
-          return _ShareSelectionSheet(revealedBody: revealedBody);
+          final recipes = _shareRecipes
+              .where((recipe) => recipe.providerIds.contains(record.providerId))
+              .toList(growable: false);
+          return _ShareSelectionSheet(
+            revealedBody: revealedBody,
+            recipes: recipes,
+          );
         },
       );
       if (draft == null) {
@@ -1656,9 +1681,13 @@ class ShareDraft {
 }
 
 class _ShareSelectionSheet extends StatefulWidget {
-  const _ShareSelectionSheet({required this.revealedBody});
+  const _ShareSelectionSheet({
+    required this.revealedBody,
+    required this.recipes,
+  });
 
   final Map<String, Object?> revealedBody;
+  final List<ShareRecipe> recipes;
 
   @override
   State<_ShareSelectionSheet> createState() => _ShareSelectionSheetState();
@@ -1669,6 +1698,7 @@ class _ShareSelectionSheetState extends State<_ShareSelectionSheet> {
   late final Map<String, bool> _fieldSelected;
   final List<RevealPredicate> _predicates = <RevealPredicate>[];
   SharePolicyPreset _selectedPolicy = _sharePolicyPresets[1];
+  String? _selectedRecipeId;
   int _predicateCounter = 0;
 
   @override
@@ -1698,7 +1728,112 @@ class _ShareSelectionSheetState extends State<_ShareSelectionSheet> {
 
   void _addPredicate(RevealPredicate predicate) {
     setState(() {
+      _selectedRecipeId = null;
       _predicates.add(predicate);
+    });
+  }
+
+  String? _resolveRecipePath(String path) {
+    final raw = path.trim();
+    if (raw.isEmpty) return null;
+    final candidates = <String>[
+      raw,
+      if (raw.startsWith(r'$.')) raw.substring(2),
+      if (raw.startsWith(r'$')) raw.substring(1),
+    ];
+    for (final prefix in const <String>[
+      'responseData.',
+      'payload.response.revealedBody.',
+      'revealedBody.',
+      'data.',
+    ]) {
+      final current = candidates.toList(growable: false);
+      for (final candidate in current) {
+        if (candidate.startsWith(prefix)) {
+          candidates.add(candidate.substring(prefix.length));
+        }
+      }
+    }
+    for (final candidate in candidates) {
+      if (widget.revealedBody.containsKey(candidate)) return candidate;
+      if (_fieldSelected.containsKey(candidate)) return candidate;
+      if (lookupValue(widget.revealedBody, candidate) != null) return candidate;
+    }
+    final cleaned = raw
+        .replaceFirst(RegExp(r'^\$\.?'), '')
+        .split('.')
+        .where((part) => part.trim().isNotEmpty)
+        .toList(growable: false);
+    if (cleaned.isEmpty) return null;
+    final leaf = cleaned.last.toLowerCase();
+    for (final existing in _orderedPaths) {
+      final lower = existing.toLowerCase();
+      final existingLeaf = lower.split('.').last;
+      if (existingLeaf == leaf || lower.endsWith('.$leaf')) {
+        return existing;
+      }
+    }
+    return null;
+  }
+
+  ShareSelection? _normalizedRecipeSelection(ShareRecipe recipe) {
+    final fields = <RevealField>[];
+    for (final field in recipe.selection.fields) {
+      final resolved = _resolveRecipePath(field.path);
+      if (resolved == null || !_fieldSelected.containsKey(resolved)) {
+        return null;
+      }
+      fields.add(
+        RevealField(
+          path: resolved,
+          label: field.label.isNotEmpty ? field.label : prettifyKey(resolved),
+        ),
+      );
+    }
+    final predicates = <RevealPredicate>[];
+    for (final predicate in recipe.selection.predicates) {
+      final resolved = _resolveRecipePath(predicate.sourcePath);
+      if (resolved == null) return null;
+      final normalized = RevealPredicate(
+        id: predicate.id,
+        label: predicate.label,
+        sourcePath: resolved,
+        transform: predicate.transform,
+        op: predicate.op,
+        value: predicate.value,
+        value2: predicate.value2,
+      );
+      final evaluation = evaluatePredicate(normalized, widget.revealedBody);
+      if (!evaluation.evaluable) return null;
+      predicates.add(normalized);
+    }
+    final selection = ShareSelection(fields: fields, predicates: predicates);
+    return selection.isEmpty ? null : selection;
+  }
+
+  String? _recipeUnavailableReason(ShareRecipe recipe) {
+    return _normalizedRecipeSelection(recipe) == null
+        ? 'Unavailable for this proof payload'
+        : null;
+  }
+
+  void _applyRecipe(ShareRecipe recipe) {
+    final selection = _normalizedRecipeSelection(recipe);
+    if (selection == null) return;
+    setState(() {
+      _selectedRecipeId = recipe.id;
+      for (final path in _orderedPaths) {
+        _fieldSelected[path] = false;
+      }
+      for (final field in selection.fields) {
+        if (_fieldSelected.containsKey(field.path)) {
+          _fieldSelected[field.path] = true;
+        }
+      }
+      _predicates
+        ..clear()
+        ..addAll(selection.predicates);
+      _predicateCounter = _predicates.length;
     });
   }
 
@@ -1716,6 +1851,7 @@ class _ShareSelectionSheetState extends State<_ShareSelectionSheet> {
     );
     if (built == null) return;
     setState(() {
+      _selectedRecipeId = null;
       if (existing != null) {
         final index = _predicates.indexWhere((p) => p.id == existing.id);
         if (index >= 0) {
@@ -1771,6 +1907,45 @@ class _ShareSelectionSheetState extends State<_ShareSelectionSheet> {
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               const SizedBox(height: 14),
+              if (widget.recipes.isNotEmpty) ...<Widget>[
+                Text(
+                  'Proof recipes',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: <Widget>[
+                    for (final recipe in widget.recipes)
+                      Builder(
+                        builder: (context) {
+                          final unavailable = _recipeUnavailableReason(recipe);
+                          final available = unavailable == null;
+                          return ChoiceChip(
+                            label: Text(recipe.label),
+                            selected: _selectedRecipeId == recipe.id,
+                            onSelected: available
+                                ? (_) => _applyRecipe(recipe)
+                                : null,
+                          );
+                        },
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _selectedRecipeId == null
+                      ? 'Pick a recipe to prefill safe fields and conditions. Disabled recipes need fields this proof does not contain.'
+                      : widget.recipes
+                            .firstWhere(
+                              (recipe) => recipe.id == _selectedRecipeId,
+                            )
+                            .description,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 14),
+              ],
               Text(
                 'Share policy',
                 style: Theme.of(context).textTheme.titleSmall,
@@ -1820,6 +1995,7 @@ class _ShareSelectionSheetState extends State<_ShareSelectionSheet> {
                   value: selected,
                   onChanged: (next) {
                     setState(() {
+                      _selectedRecipeId = null;
                       _fieldSelected[path] = next ?? false;
                     });
                   },
@@ -1922,6 +2098,7 @@ class _ShareSelectionSheetState extends State<_ShareSelectionSheet> {
                           icon: const Icon(Icons.close_rounded, size: 18),
                           onPressed: () {
                             setState(() {
+                              _selectedRecipeId = null;
                               _predicates.removeWhere(
                                 (p) => p.id == predicate.id,
                               );

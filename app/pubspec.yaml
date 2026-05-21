@@ -34,4 +34,5 @@ flutter:
   assets:
     - .env
     - assets/provider_catalog.json
+    - assets/share_recipes.json
     - assets/branding/backpack_logo.png

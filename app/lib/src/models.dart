@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'share_selection.dart';
+
 class ProviderConfig {
   const ProviderConfig({
     required this.label,
@@ -142,6 +144,43 @@ class SharePolicyPreset {
   final int expiresInMinutes;
   final bool oneTimeView;
   final int? maxViews;
+}
+
+class ShareRecipe {
+  const ShareRecipe({
+    required this.id,
+    required this.label,
+    required this.category,
+    required this.providerIds,
+    required this.selection,
+    this.description = '',
+  });
+
+  final String id;
+  final String label;
+  final String category;
+  final List<String> providerIds;
+  final ShareSelection selection;
+  final String description;
+
+  factory ShareRecipe.fromJson(Map<String, Object?> json) {
+    final providerIds = (json['providerIds'] as List<Object?>? ?? const [])
+        .whereType<String>()
+        .map((id) => id.trim())
+        .where((id) => id.isNotEmpty)
+        .toList(growable: false);
+    final rawSelection = json['selection'];
+    return ShareRecipe(
+      id: (json['id'] as String?)?.trim() ?? '',
+      label: (json['label'] as String?)?.trim() ?? 'Recipe',
+      category: (json['category'] as String?)?.trim() ?? 'General',
+      providerIds: providerIds,
+      description: (json['description'] as String?)?.trim() ?? '',
+      selection: rawSelection is Map<String, Object?>
+          ? ShareSelection.fromJson(rawSelection)
+          : const ShareSelection(),
+    );
+  }
 }
 
 class ShareViewResponse {
