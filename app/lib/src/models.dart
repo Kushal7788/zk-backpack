@@ -126,6 +126,24 @@ class ShareCreateResult {
   }
 }
 
+class SharePolicyPreset {
+  const SharePolicyPreset({
+    required this.id,
+    required this.label,
+    required this.description,
+    required this.expiresInMinutes,
+    required this.oneTimeView,
+    required this.maxViews,
+  });
+
+  final String id;
+  final String label;
+  final String description;
+  final int expiresInMinutes;
+  final bool oneTimeView;
+  final int? maxViews;
+}
+
 class ShareViewResponse {
   const ShareViewResponse({
     required this.status,

@@ -16,6 +16,32 @@ import 'src/share_selection.dart';
 import 'src/share_service_client.dart';
 
 const _brandLogoAssetPath = 'assets/branding/backpack_logo.png';
+const _sharePolicyPresets = <SharePolicyPreset>[
+  SharePolicyPreset(
+    id: 'one_time',
+    label: 'One-time',
+    description: 'Best for a single verifier. Blocks after the first view.',
+    expiresInMinutes: 60,
+    oneTimeView: true,
+    maxViews: 1,
+  ),
+  SharePolicyPreset(
+    id: 'interview',
+    label: 'Interview',
+    description: 'Valid for one day and up to 10 views.',
+    expiresInMinutes: 1440,
+    oneTimeView: false,
+    maxViews: 10,
+  ),
+  SharePolicyPreset(
+    id: 'demo',
+    label: 'Demo',
+    description: 'Valid for seven days and up to 100 views.',
+    expiresInMinutes: 10080,
+    oneTimeView: false,
+    maxViews: 100,
+  ),
+];
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -332,7 +358,7 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
       if (!mounted) {
         return;
       }
-      final ShareSelection? selection = await showModalBottomSheet<ShareSelection>(
+      final ShareDraft? draft = await showModalBottomSheet<ShareDraft>(
         context: context,
         isScrollControlled: true,
         useSafeArea: true,
@@ -341,9 +367,11 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
           return _ShareSelectionSheet(revealedBody: revealedBody);
         },
       );
-      if (selection == null) {
+      if (draft == null) {
         return;
       }
+      final selection = draft.selection;
+      final policy = draft.policy;
       if (selection.isEmpty) {
         _showErrorSnack('Pick at least one field or predicate to share.');
         return;
@@ -361,9 +389,9 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
       final shareResult = await _shareClient.createShare(
         proofId: record.proofId,
         policyTemplate: 'selection',
-        expiresInMinutes: 60,
-        oneTimeView: false,
-        maxViews: 10,
+        expiresInMinutes: policy.expiresInMinutes,
+        oneTimeView: policy.oneTimeView,
+        maxViews: policy.maxViews,
         selection: selection,
       );
       await _store.updateCloudShareState(
@@ -381,7 +409,8 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
         builder: (context) {
           final scheme = Theme.of(context).colorScheme;
           final mediaWidth = MediaQuery.of(context).size.width;
-          final double qrSide = (mediaWidth.clamp(220.0, 320.0) - 80).toDouble();
+          final double qrSide = (mediaWidth.clamp(220.0, 320.0) - 80)
+              .toDouble();
           return Dialog(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 360),
@@ -435,11 +464,38 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                         ),
                         child: Text(
                           shareResult.url,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: scheme.primary,
-                            decoration: TextDecoration.underline,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: scheme.primary,
+                                decoration: TextDecoration.underline,
+                              ),
                         ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: scheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            policy.label,
+                            style: Theme.of(context).textTheme.labelLarge,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _sharePolicySummary(
+                              policy,
+                              expiresAtUtc: shareResult.expiresAtUtc,
+                            ),
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -480,8 +536,12 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
             ),
             FilledButton.tonal(
               style: FilledButton.styleFrom(
-                foregroundColor: Theme.of(dialogContext).colorScheme.onErrorContainer,
-                backgroundColor: Theme.of(dialogContext).colorScheme.errorContainer,
+                foregroundColor: Theme.of(
+                  dialogContext,
+                ).colorScheme.onErrorContainer,
+                backgroundColor: Theme.of(
+                  dialogContext,
+                ).colorScheme.errorContainer,
               ),
               onPressed: () => Navigator.of(dialogContext).pop(true),
               child: const Text('Delete'),
@@ -618,14 +678,12 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
         }
       }
     }
-    final candidate = _firstNonEmptyMap(
-      <Object?>[
-        decoded['revealedData'],
-        decoded['revealed'],
-        decoded['claims'],
-        decoded['scopedClaims'],
-      ],
-    );
+    final candidate = _firstNonEmptyMap(<Object?>[
+      decoded['revealedData'],
+      decoded['revealed'],
+      decoded['claims'],
+      decoded['scopedClaims'],
+    ]);
     final source = candidate ?? decoded;
     final flattened = <String, String>{};
     _flattenValues(source, flattened, prefix: '');
@@ -656,8 +714,7 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
           if (endpoint is Map<String, Object?>) {
             final method = (endpoint['method'] as String?)?.trim() ?? '';
             final host =
-                (endpoint['host'] as String?)?.trim() ??
-                fallbackHost.trim();
+                (endpoint['host'] as String?)?.trim() ?? fallbackHost.trim();
             final path = (endpoint['path'] as String?)?.trim() ?? '';
             final uri = '$host$path'.trim();
             if (uri.isNotEmpty) {
@@ -752,10 +809,7 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        duration: const Duration(seconds: 2),
-        content: Text(message),
-      ),
+      SnackBar(duration: const Duration(seconds: 2), content: Text(message)),
     );
   }
 
@@ -855,165 +909,158 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Column(
               children: <Widget>[
-                      _SectionCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Text(
-                              'Create a fresh proof',
-                              style: Theme.of(context).textTheme.titleLarge,
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              'Select a provider and generate. Your proof is encrypted and saved in Vault.',
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                            const SizedBox(height: 18),
-                            DropdownButtonFormField<ProviderConfig>(
-                              initialValue: provider,
-                              decoration: const InputDecoration(
-                                labelText: 'Provider',
-                                prefixIcon: Icon(Icons.inventory_2_outlined),
-                              ),
-                              selectedItemBuilder: (context) {
-                                return _providers
-                                    .map(
-                                      (item) => Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: Text(
-                                          item.label,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    )
-                                    .toList(growable: false);
-                              },
-                              items: _providers
-                                  .map(
-                                    (item) => DropdownMenuItem<ProviderConfig>(
-                                      value: item,
-                                      child: Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: <Widget>[
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: <Widget>[
-                                                Text(item.label),
-                                                const SizedBox(height: 2),
-                                                Text(
-                                                  item.description,
-                                                  style: Theme.of(context)
-                                                      .textTheme
-                                                      .bodySmall,
-                                                  maxLines: 2,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  )
-                                  .toList(growable: false),
-                              onChanged: _running
-                                  ? null
-                                  : (value) {
-                                      setState(() {
-                                        _selectedProvider = value;
-                                      });
-                                    },
-                            ),
-                            if (provider != null) ...<Widget>[
-                              const SizedBox(height: 14),
-                              Container(
-                                width: double.infinity,
-                                decoration: BoxDecoration(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.surfaceContainerHighest,
-                                  borderRadius: BorderRadius.circular(12),
+                _SectionCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Create a fresh proof',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'Select a provider and generate. Your proof is encrypted and saved in Vault.',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 18),
+                      DropdownButtonFormField<ProviderConfig>(
+                        initialValue: provider,
+                        decoration: const InputDecoration(
+                          labelText: 'Provider',
+                          prefixIcon: Icon(Icons.inventory_2_outlined),
+                        ),
+                        selectedItemBuilder: (context) {
+                          return _providers
+                              .map(
+                                (item) => Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    item.label,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
-                                padding: const EdgeInsets.all(12),
+                              )
+                              .toList(growable: false);
+                        },
+                        items: _providers
+                            .map(
+                              (item) => DropdownMenuItem<ProviderConfig>(
+                                value: item,
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: <Widget>[
-                                    Icon(
-                                      Icons.info_outline_rounded,
-                                      size: 16,
-                                      color: Theme.of(context).colorScheme.primary,
-                                    ),
-                                    const SizedBox(width: 8),
                                     Expanded(
-                                      child: Text(
-                                        provider.description,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodySmall,
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: <Widget>[
+                                          Text(item.label),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            item.description,
+                                            style: Theme.of(
+                                              context,
+                                            ).textTheme.bodySmall,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                            ],
-                            const SizedBox(height: 14),
-                            Container(
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.primaryContainer.withValues(
-                                  alpha: 0.35,
-                                ),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              padding: const EdgeInsets.all(12),
-                              child: Text(
-                                'Generate starts a secure provider session and stores your proof locally.',
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            ),
-                            const SizedBox(height: 18),
-                            SizedBox(
-                              width: double.infinity,
-                              child: FilledButton.icon(
-                                onPressed: _running ? null : _generateProof,
-                                icon: const Icon(Icons.auto_awesome),
-                                label: Text(
-                                  _running ? 'Generating...' : 'Generate Proof',
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                            )
+                            .toList(growable: false),
+                        onChanged: _running
+                            ? null
+                            : (value) {
+                                setState(() {
+                                  _selectedProvider = value;
+                                });
+                              },
                       ),
-                      if (_running) ...<Widget>[
+                      if (provider != null) ...<Widget>[
                         const SizedBox(height: 14),
-                        _SectionCard(
-                          child: Column(
+                        Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
-                              Text(
-                                'Working on your proof',
-                                style: Theme.of(context).textTheme.titleMedium,
+                              Icon(
+                                Icons.info_outline_rounded,
+                                size: 16,
+                                color: Theme.of(context).colorScheme.primary,
                               ),
-                              const SizedBox(height: 12),
-                              LinearProgressIndicator(value: _generationPercent),
-                              const SizedBox(height: 10),
-                              Text(
-                                _generationStep.isEmpty
-                                    ? 'Securing session...'
-                                    : _generationStep,
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  provider.description,
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
                               ),
                             ],
                           ),
                         ),
                       ],
+                      const SizedBox(height: 14),
+                      Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primaryContainer
+                              .withValues(alpha: 0.35),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.all(12),
+                        child: Text(
+                          'Generate starts a secure provider session and stores your proof locally.',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: _running ? null : _generateProof,
+                          icon: const Icon(Icons.auto_awesome),
+                          label: Text(
+                            _running ? 'Generating...' : 'Generate Proof',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (_running) ...<Widget>[
+                  const SizedBox(height: 14),
+                  _SectionCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          'Working on your proof',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 12),
+                        LinearProgressIndicator(value: _generationPercent),
+                        const SizedBox(height: 10),
+                        Text(
+                          _generationStep.isEmpty
+                              ? 'Securing session...'
+                              : _generationStep,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -1042,9 +1089,7 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                     ),
                     child: const Padding(
                       padding: EdgeInsets.all(12),
-                      child: Image(
-                        image: AssetImage(_brandLogoAssetPath),
-                      ),
+                      child: Image(image: AssetImage(_brandLogoAssetPath)),
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -1102,17 +1147,21 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                               children: <Widget>[
                                 Text(
                                   providerLabel,
-                                  style: Theme.of(context).textTheme.titleMedium,
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium,
                                 ),
-                                if (_providerById[proof.providerId]
-                                        ?.description
+                                if (_providerById[proof.providerId]?.description
                                         .trim()
                                         .isNotEmpty ==
                                     true) ...<Widget>[
                                   const SizedBox(height: 2),
                                   Text(
-                                    _providerById[proof.providerId]!.description,
-                                    style: Theme.of(context).textTheme.bodySmall,
+                                    _providerById[proof.providerId]!
+                                        .description,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodySmall,
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -1176,7 +1225,10 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                           padding: const EdgeInsets.all(6),
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                        icon: const Icon(
+                          Icons.delete_outline_rounded,
+                          size: 18,
+                        ),
                       ),
                     ],
                   ),
@@ -1228,9 +1280,9 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
             child: IgnorePointer(
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface.withValues(
-                    alpha: 0.75,
-                  ),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.surface.withValues(alpha: 0.75),
                 ),
                 child: const Center(child: CircularProgressIndicator()),
               ),
@@ -1395,10 +1447,7 @@ class _SectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: child,
-      ),
+      child: Padding(padding: const EdgeInsets.all(14), child: child),
     );
   }
 }
@@ -1545,8 +1594,18 @@ String? _humanizeIsoDate(String input) {
   if (parsed == null) return null;
   final local = parsed.toLocal();
   const months = <String>[
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
   final dateOnly = !input.contains('T');
   final month = months[local.month - 1];
@@ -1557,6 +1616,43 @@ String? _humanizeIsoDate(String input) {
   final minute = local.minute.toString().padLeft(2, '0');
   final ampm = local.hour < 12 ? 'AM' : 'PM';
   return '$month ${local.day}, ${local.year}, $hour12:$minute $ampm';
+}
+
+String _sharePolicySummary(SharePolicyPreset policy, {String? expiresAtUtc}) {
+  final parts = <String>[];
+  if (policy.oneTimeView) {
+    parts.add('One-time link');
+  }
+  if (policy.maxViews != null) {
+    parts.add(
+      'Up to ${policy.maxViews} view${policy.maxViews == 1 ? '' : 's'}',
+    );
+  }
+  if (expiresAtUtc != null && expiresAtUtc.trim().isNotEmpty) {
+    parts.add('Expires ${_humanizeIsoDate(expiresAtUtc) ?? expiresAtUtc}');
+  } else {
+    parts.add('Expires in ${_formatPolicyDuration(policy.expiresInMinutes)}');
+  }
+  return parts.join(' · ');
+}
+
+String _formatPolicyDuration(int minutes) {
+  if (minutes % 1440 == 0) {
+    final days = minutes ~/ 1440;
+    return '$days day${days == 1 ? '' : 's'}';
+  }
+  if (minutes % 60 == 0) {
+    final hours = minutes ~/ 60;
+    return '$hours hour${hours == 1 ? '' : 's'}';
+  }
+  return '$minutes minute${minutes == 1 ? '' : 's'}';
+}
+
+class ShareDraft {
+  const ShareDraft({required this.selection, required this.policy});
+
+  final ShareSelection selection;
+  final SharePolicyPreset policy;
 }
 
 class _ShareSelectionSheet extends StatefulWidget {
@@ -1572,20 +1668,25 @@ class _ShareSelectionSheetState extends State<_ShareSelectionSheet> {
   late final List<String> _orderedPaths;
   late final Map<String, bool> _fieldSelected;
   final List<RevealPredicate> _predicates = <RevealPredicate>[];
+  SharePolicyPreset _selectedPolicy = _sharePolicyPresets[1];
   int _predicateCounter = 0;
 
   @override
   void initState() {
     super.initState();
     _orderedPaths = widget.revealedBody.keys.toList(growable: false);
-    _fieldSelected = <String, bool>{for (final path in _orderedPaths) path: false};
+    _fieldSelected = <String, bool>{
+      for (final path in _orderedPaths) path: false,
+    };
   }
 
   bool get _hasDob => _orderedPaths.any(_looksLikeDob);
   bool _looksLikeDob(String path) {
     final lower = path.toLowerCase();
-    return lower.contains('dob') || lower.endsWith('.birth') ||
-        lower.contains('birthdate') || lower.contains('dateofbirth');
+    return lower.contains('dob') ||
+        lower.endsWith('.birth') ||
+        lower.contains('birthdate') ||
+        lower.contains('dateofbirth');
   }
 
   String? get _suggestedDobPath {
@@ -1671,6 +1772,40 @@ class _ShareSelectionSheetState extends State<_ShareSelectionSheet> {
               ),
               const SizedBox(height: 14),
               Text(
+                'Share policy',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: <Widget>[
+                  for (final policy in _sharePolicyPresets)
+                    ChoiceChip(
+                      label: Text(policy.label),
+                      selected: _selectedPolicy.id == policy.id,
+                      onSelected: (_) {
+                        setState(() {
+                          _selectedPolicy = policy;
+                        });
+                      },
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _selectedPolicy.description,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _sharePolicySummary(_selectedPolicy),
+                style: Theme.of(
+                  context,
+                ).textTheme.labelSmall?.copyWith(color: scheme.primary),
+              ),
+              const SizedBox(height: 14),
+              Text(
                 'Fields to reveal',
                 style: Theme.of(context).textTheme.titleSmall,
               ),
@@ -1706,7 +1841,10 @@ class _ShareSelectionSheetState extends State<_ShareSelectionSheet> {
                   const Spacer(),
                   TextButton.icon(
                     onPressed: () => _editPredicate(),
-                    icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
+                    icon: const Icon(
+                      Icons.add_circle_outline_rounded,
+                      size: 18,
+                    ),
                     label: const Text('Add predicate'),
                   ),
                 ],
@@ -1746,12 +1884,15 @@ class _ShareSelectionSheetState extends State<_ShareSelectionSheet> {
                   ),
                 ),
               ..._predicates.map((predicate) {
-                final evaluation = evaluatePredicate(predicate, widget.revealedBody);
+                final evaluation = evaluatePredicate(
+                  predicate,
+                  widget.revealedBody,
+                );
                 final color = !evaluation.evaluable
                     ? scheme.outline
                     : evaluation.satisfied
-                        ? scheme.primary
-                        : scheme.error;
+                    ? scheme.primary
+                    : scheme.error;
                 return Card(
                   margin: const EdgeInsets.symmetric(vertical: 4),
                   child: ListTile(
@@ -1759,8 +1900,8 @@ class _ShareSelectionSheetState extends State<_ShareSelectionSheet> {
                       !evaluation.evaluable
                           ? Icons.help_outline
                           : evaluation.satisfied
-                              ? Icons.check_circle_rounded
-                              : Icons.cancel_rounded,
+                          ? Icons.check_circle_rounded
+                          : Icons.cancel_rounded,
                       color: color,
                     ),
                     title: Text(predicate.label),
@@ -1781,7 +1922,9 @@ class _ShareSelectionSheetState extends State<_ShareSelectionSheet> {
                           icon: const Icon(Icons.close_rounded, size: 18),
                           onPressed: () {
                             setState(() {
-                              _predicates.removeWhere((p) => p.id == predicate.id);
+                              _predicates.removeWhere(
+                                (p) => p.id == predicate.id,
+                              );
                             });
                           },
                         ),
@@ -1841,7 +1984,12 @@ class _ShareSelectionSheetState extends State<_ShareSelectionSheet> {
                     child: FilledButton(
                       onPressed: selection.isEmpty
                           ? null
-                          : () => Navigator.of(context).pop(selection),
+                          : () => Navigator.of(context).pop(
+                              ShareDraft(
+                                selection: selection,
+                                policy: _selectedPolicy,
+                              ),
+                            ),
                       child: const Text('Share QR'),
                     ),
                   ),
@@ -1881,7 +2029,16 @@ class _PredicateEditorDialogState extends State<_PredicateEditorDialog> {
     'digitsOnly': 'digits only',
   };
   static const _operators = <String>[
-    '==', '!=', '>', '>=', '<', '<=', 'between', 'contains', 'startsWith', 'endsWith',
+    '==',
+    '!=',
+    '>',
+    '>=',
+    '<',
+    '<=',
+    'between',
+    'contains',
+    'startsWith',
+    'endsWith',
   ];
 
   late String _path;
@@ -1898,9 +2055,15 @@ class _PredicateEditorDialogState extends State<_PredicateEditorDialog> {
     _path = initial?.sourcePath ?? widget.paths.first;
     _transform = initial?.transform ?? _autoTransform(_path);
     _op = initial?.op ?? '>=';
-    _labelController = TextEditingController(text: initial?.label ?? _autoLabel());
-    _valueController = TextEditingController(text: initial?.value?.toString() ?? '');
-    _value2Controller = TextEditingController(text: initial?.value2?.toString() ?? '');
+    _labelController = TextEditingController(
+      text: initial?.label ?? _autoLabel(),
+    );
+    _valueController = TextEditingController(
+      text: initial?.value?.toString() ?? '',
+    );
+    _value2Controller = TextEditingController(
+      text: initial?.value2?.toString() ?? '',
+    );
   }
 
   String _autoTransform(String path) {
@@ -1995,7 +2158,8 @@ class _PredicateEditorDialogState extends State<_PredicateEditorDialog> {
               decoration: const InputDecoration(labelText: 'Operator'),
               items: _operators
                   .map(
-                    (op) => DropdownMenuItem<String>(value: op, child: Text(op)),
+                    (op) =>
+                        DropdownMenuItem<String>(value: op, child: Text(op)),
                   )
                   .toList(growable: false),
               onChanged: (next) {
@@ -2070,8 +2234,8 @@ class _PredicateRow extends StatelessWidget {
     final color = !evaluable
         ? scheme.outline
         : satisfied
-            ? scheme.primary
-            : scheme.error;
+        ? scheme.primary
+        : scheme.error;
     return Container(
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLowest,
@@ -2085,8 +2249,8 @@ class _PredicateRow extends StatelessWidget {
             !evaluable
                 ? Icons.help_outline
                 : satisfied
-                    ? Icons.check_circle_rounded
-                    : Icons.cancel_rounded,
+                ? Icons.check_circle_rounded
+                : Icons.cancel_rounded,
             color: color,
           ),
           const SizedBox(width: 10),
@@ -2107,9 +2271,11 @@ class _PredicateRow extends StatelessWidget {
             !evaluable
                 ? 'unknown'
                 : satisfied
-                    ? 'true'
-                    : 'false',
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(color: color),
+                ? 'true'
+                : 'false',
+            style: Theme.of(
+              context,
+            ).textTheme.labelMedium?.copyWith(color: color),
           ),
         ],
       ),
@@ -2118,7 +2284,10 @@ class _PredicateRow extends StatelessWidget {
 }
 
 class _ReceiptVerifyTile extends StatefulWidget {
-  const _ReceiptVerifyTile({required this.signature, required this.shareClient});
+  const _ReceiptVerifyTile({
+    required this.signature,
+    required this.shareClient,
+  });
 
   final String signature;
   final ShareServiceClient shareClient;
@@ -2191,8 +2360,10 @@ class _ReceiptVerifyTileState extends State<_ReceiptVerifyTile> {
                   result == null
                       ? 'Tap to verify HMAC signature on the service receipt.'
                       : result.message.isNotEmpty
-                          ? result.message
-                          : (result.ok ? 'Signature verified' : 'Invalid signature'),
+                      ? result.message
+                      : (result.ok
+                            ? 'Signature verified'
+                            : 'Invalid signature'),
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ),
