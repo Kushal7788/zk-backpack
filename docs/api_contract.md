@@ -79,7 +79,8 @@ display:
     "expiresAtUtc": "2026-05-07T11:00:00Z",
     "oneTimeView": true,
     "maxViews": 1,
-    "views": 1
+    "views": 1,
+    "sourceDomain": "graphql.app.gusto.com"
   }
 }
 ```

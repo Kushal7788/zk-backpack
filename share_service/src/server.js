@@ -323,6 +323,7 @@ async function verifyToken(token) {
     };
   }
   const artifact = decryptJson(masterKey, encryptedPayload);
+  const sourceDomain = sourceDomainForProof(proof, artifact);
   const artifactHashB64 = sha256B64(JSON.stringify(artifact));
   const verifier = await safeVerifyArtifact(env.verifierUrl, artifact);
   const viewAfter = await store.consumeShareView(token);
@@ -330,6 +331,7 @@ async function verifyToken(token) {
     tokenId: token,
     proofId: share.proofId,
     artifactHash: artifactHashB64,
+    sourceDomain,
     verifierResult: verifier,
     verifiedAt: new Date().toISOString()
   };
@@ -354,7 +356,7 @@ async function verifyToken(token) {
         : verifier.reason ?? 'Proof verification failed',
       verification: verifier,
       scopedClaims,
-      share: summarizeShare(viewAfter ?? share),
+      share: summarizeShare(viewAfter ?? share, { sourceDomain }),
       receipt: {
         ...receiptPayload,
         signature: receiptToken
@@ -363,14 +365,42 @@ async function verifyToken(token) {
   };
 }
 
-function summarizeShare(share) {
+function summarizeShare(share, { sourceDomain = '' } = {}) {
   return {
     policyTemplate: share.policyTemplate,
     expiresAtUtc: share.expiresAtUtc,
     oneTimeView: Boolean(share.oneTimeView),
     maxViews: share.maxViews ?? null,
-    views: Number(share.views ?? 0)
+    views: Number(share.views ?? 0),
+    sourceDomain
   };
+}
+
+function sourceDomainForProof(proof, artifact) {
+  const endpoint = artifact?.payload?.request?.endpoint;
+  const candidates = [
+    proof?.targetHost,
+    artifact?.transcriptSummary?.targetHost,
+    endpoint?.host,
+    endpoint?.url
+  ];
+  for (const candidate of candidates) {
+    const domain = normalizeProviderDomain(candidate);
+    if (domain) return domain;
+  }
+  return '';
+}
+
+function normalizeProviderDomain(value) {
+  let source = String(value ?? '').trim();
+  if (!source) return '';
+  source = source.replace(/^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+/i, '');
+  try {
+    const parsed = new URL(source.includes('://') ? source : `https://${source}`);
+    return parsed.hostname.toLowerCase();
+  } catch {
+    return source.split('/')[0].split('?')[0].split('#')[0].toLowerCase();
+  }
 }
 
 function projectClaims(artifact, share) {

@@ -71,6 +71,18 @@ function printable(value) {
   return JSON.stringify(value);
 }
 
+function providerDomain(value) {
+  let source = String(value ?? '').trim();
+  if (!source) return '';
+  source = source.replace(/^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+/i, '');
+  try {
+    const parsed = new URL(source.includes('://') ? source : `https://${source}`);
+    return parsed.hostname.toLowerCase();
+  } catch {
+    return source.split('/')[0].split('?')[0].split('#')[0].toLowerCase();
+  }
+}
+
 function humanDate(iso) {
   if (!iso) return '';
   const date = new Date(iso);
@@ -398,12 +410,16 @@ createApp({
         share.value = payload.share ?? {};
         verifiedAt.value =
           (payload.receipt && payload.receipt.verifiedAt) || '';
-        // Best-effort issuer/target host extraction.
+        // Best-effort source domain extraction.
         const fromReceipt =
-          payload.receipt && payload.receipt.verifierResult
-            ? payload.receipt.verifierResult.targetHost
+          payload.receipt && payload.receipt.sourceDomain
+            ? payload.receipt.sourceDomain
             : null;
-        targetHost.value = fromReceipt || extractHost(payload) || '';
+        targetHost.value =
+          providerDomain(payload.share && payload.share.sourceDomain) ||
+          providerDomain(fromReceipt) ||
+          extractHost(payload) ||
+          '';
       } catch (error) {
         status.value = 'invalid';
         message.value = error instanceof Error ? error.message : String(error);
@@ -415,8 +431,8 @@ createApp({
     function extractHost(payload) {
       const v = payload && payload.verification;
       if (v && typeof v === 'object') {
-        if (typeof v.targetHost === 'string') return v.targetHost;
-        if (typeof v.host === 'string') return v.host;
+        if (typeof v.targetHost === 'string') return providerDomain(v.targetHost);
+        if (typeof v.host === 'string') return providerDomain(v.host);
       }
       return '';
     }

@@ -277,7 +277,7 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
   Future<void> _generateProof() async {
     final provider = _selectedProvider;
     if (provider == null) {
-      _showErrorSnack('Please select a provider first.');
+      _showErrorSnack('Choose a source first.');
       return;
     }
     final verifierUrl = Uri.tryParse(AppConfig.verifierUrl.trim());
@@ -289,8 +289,8 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
     setState(() {
       _running = true;
       _generationPercent = 0;
-      _generationStep = 'Preparing secure proof flow...';
-      _statusMessage = 'Generating proof with ${provider.label}';
+      _generationStep = 'Opening a secure session...';
+      _statusMessage = 'Adding proof from ${provider.label}';
     });
 
     final client = MobileProofClient(bridge: MethodChannelNativeBridge());
@@ -339,26 +339,26 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
         targetHost: targetHost,
       );
       await _reloadProofs();
-      _showInfoSnack('Proof generated and saved in your backpack.');
+      _showInfoSnack('Proof saved in your backpack.');
       if (!mounted) {
         return;
       }
       setState(() {
         _tabIndex = 0;
-        _statusMessage = 'Proof ready in vault';
+        _statusMessage = 'Proof ready';
       });
     } on ProofException catch (error) {
       _showErrorSnack('[${error.code.name}] ${error.message}');
       if (mounted) {
         setState(() {
-          _statusMessage = 'Proof generation failed';
+          _statusMessage = 'Could not add proof';
         });
       }
     } catch (error) {
-      _showErrorSnack('Proof generation failed: $error');
+      _showErrorSnack('Could not add proof: $error');
       if (mounted) {
         setState(() {
-          _statusMessage = 'Proof generation failed';
+          _statusMessage = 'Could not add proof';
         });
       }
     } finally {
@@ -374,12 +374,12 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
 
   Future<void> _uploadAndShare(ProofRecord record) async {
     try {
-      _showInfoSnack('Preparing secure share...');
+      _showInfoSnack('Preparing share...');
       final decryptedJson = await _store.decryptProofArtifactJson(record);
       final decoded = jsonDecode(decryptedJson);
       final revealedBody = resolveRevealedBody(decoded);
       if (revealedBody.isEmpty) {
-        _showErrorSnack('This proof has no revealed fields to share.');
+        _showErrorSnack('This proof has no saved details to share.');
         return;
       }
       if (!mounted) {
@@ -406,10 +406,10 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
       final selection = draft.selection;
       final policy = draft.policy;
       if (selection.isEmpty) {
-        _showErrorSnack('Pick at least one field or predicate to share.');
+        _showErrorSnack('Choose at least one detail or check to share.');
         return;
       }
-      _showInfoSnack('Uploading encrypted proof...');
+      _showInfoSnack('Creating private link...');
       final cloudProofId = await _shareClient.uploadProof(
         record: record,
         artifactJson: decryptedJson,
@@ -461,7 +461,7 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                         ),
                         const SizedBox(width: 10),
                         Text(
-                          'Share Proof',
+                          'Share from Backpack',
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
                       ],
@@ -547,7 +547,7 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
         },
       );
     } catch (error) {
-      _showErrorSnack('Share failed: $error');
+      _showErrorSnack('Could not create share: $error');
     }
   }
 
@@ -557,10 +557,10 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Delete proof?'),
+          title: const Text('Remove proof?'),
           content: Text(
             'This will permanently remove the proof from "$providerLabel" on this device. '
-            'Active share links will keep working until they expire or you revoke them.',
+            'Existing share links will keep working until they expire or you revoke them.',
           ),
           actions: <Widget>[
             TextButton(
@@ -591,7 +591,7 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
       await _reloadProofs();
       _showInfoSnack('Proof removed from this device.');
     } catch (error) {
-      _showErrorSnack('Could not delete proof: $error');
+      _showErrorSnack('Could not remove proof: $error');
     }
   }
 
@@ -607,7 +607,7 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
         shareStatus: 'revoked',
       );
       await _reloadProofs();
-      _showInfoSnack('Share access revoked.');
+      _showInfoSnack('Share link revoked.');
     } catch (error) {
       _showErrorSnack('Could not revoke share: $error');
     }
@@ -980,11 +980,11 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
           ),
           NavigationDestination(
             icon: Icon(Icons.auto_awesome_outlined),
-            label: 'Generate',
+            label: 'Add',
           ),
           NavigationDestination(
             icon: Icon(Icons.qr_code_scanner_rounded),
-            label: 'Scan',
+            label: 'Verify',
           ),
         ],
       ),
@@ -1028,12 +1028,12 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text(
-                        'Create a fresh proof',
+                        'Add a proof',
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        'Select a provider and generate. Your proof is encrypted and saved in Vault.',
+                        'Choose a source. The proof is saved in your backpack and shared only when you ask.',
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                       const SizedBox(height: 18),
@@ -1093,29 +1093,13 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                           ),
                         ),
                       ],
-                      const SizedBox(height: 14),
-                      Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primaryContainer
-                              .withValues(alpha: 0.35),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.all(12),
-                        child: Text(
-                          'Generate starts a secure provider session and stores your proof locally.',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ),
                       const SizedBox(height: 18),
                       SizedBox(
                         width: double.infinity,
                         child: FilledButton.icon(
                           onPressed: _running ? null : _generateProof,
                           icon: const Icon(Icons.auto_awesome),
-                          label: Text(
-                            _running ? 'Generating...' : 'Generate Proof',
-                          ),
+                          label: Text(_running ? 'Adding...' : 'Add Proof'),
                         ),
                       ),
                     ],
@@ -1128,7 +1112,7 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
                         Text(
-                          'Working on your proof',
+                          'Adding proof',
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         const SizedBox(height: 12),
@@ -1136,7 +1120,7 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                         const SizedBox(height: 10),
                         Text(
                           _generationStep.isEmpty
-                              ? 'Securing session...'
+                              ? 'Opening a secure session...'
                               : _generationStep,
                         ),
                       ],
@@ -1182,7 +1166,7 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Create your first proof to start building your secure vault.',
+                    'Add your first proof from a source you trust.',
                     style: Theme.of(context).textTheme.bodyMedium,
                     textAlign: TextAlign.center,
                   ),
@@ -1194,7 +1178,7 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                       });
                     },
                     icon: const Icon(Icons.auto_awesome_rounded),
-                    label: const Text('Generate Proof'),
+                    label: const Text('Add Proof'),
                   ),
                 ],
               ),
@@ -1271,15 +1255,13 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                                 const SizedBox(height: 3),
                                 Text(
                                   expanded
-                                      ? 'Tap to collapse details'
-                                      : 'Tap to view proof details',
+                                      ? 'Tap to hide details'
+                                      : 'Tap to view details',
                                   style: Theme.of(context).textTheme.bodySmall,
                                 ),
                               ],
                             ),
                           ),
-                          _ShareStatusPill(status: proof.shareStatus),
-                          const SizedBox(width: 8),
                           Icon(
                             expanded
                                 ? Icons.keyboard_arrow_up_rounded
@@ -1296,7 +1278,7 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: <Widget>[
                       IconButton.filledTonal(
-                        tooltip: 'Upload and share',
+                        tooltip: 'Share',
                         onPressed: () => _uploadAndShare(proof),
                         style: IconButton.styleFrom(
                           minimumSize: const Size(34, 34),
@@ -1339,28 +1321,28 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                   if (expanded) ...<Widget>[
                     const SizedBox(height: 10),
                     _LabeledValueRow(
-                      label: 'Created Time',
+                      label: 'Created',
                       value: _formatDate(proof.createdAtUtc),
                     ),
                     const SizedBox(height: 7),
                     _LabeledValueRow(
-                      label: 'Request Target Endpoint',
+                      label: 'Source',
                       value: view?.targetEndpoint ?? proof.targetHost,
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      'Revealed Data',
+                      'Saved details',
                       style: Theme.of(context).textTheme.titleSmall,
                     ),
                     const SizedBox(height: 8),
                     if (view == null || !view.loadedSuccessfully)
                       Text(
-                        'Revealed data unavailable for this proof.',
+                        'Saved details unavailable for this proof.',
                         style: Theme.of(context).textTheme.bodyMedium,
                       )
                     else if (view.revealedEntries.isEmpty)
                       Text(
-                        'No revealed data for this proof.',
+                        'No saved details for this proof.',
                         style: Theme.of(context).textTheme.bodyMedium,
                       )
                     else
@@ -1405,19 +1387,19 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Text(
-                'Verify a shared proof',
+                'Check a shared proof',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 6),
               Text(
-                'Paste a share link or token to verify the credential.',
+                'Paste a share link to see whether it is still valid and what it reveals.',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _shareTokenController,
                 decoration: const InputDecoration(
-                  labelText: 'Share URL or token',
+                  labelText: 'Share link',
                   prefixIcon: Icon(Icons.link),
                 ),
               ),
@@ -1428,14 +1410,14 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                     : () {
                         final raw = _shareTokenController.text.trim();
                         if (raw.isEmpty) {
-                          _showErrorSnack('Paste a token or share URL first.');
+                          _showErrorSnack('Paste a share link first.');
                           return;
                         }
                         final token = _extractToken(raw);
                         unawaited(_openShareInBrowserView(token));
                       },
                 icon: const Icon(Icons.verified),
-                label: const Text('Verify Token'),
+                label: const Text('Check Link'),
               ),
             ],
           ),
@@ -1455,91 +1437,265 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
           ),
-        if (result != null)
-          _SectionCard(
-            child: Column(
+        if (result != null) _buildVerifyResultCard(result),
+      ],
+    );
+  }
+
+  Widget _buildVerifyResultCard(ShareViewResponse result) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final status = result.status.toLowerCase();
+    final isValid = status == 'valid';
+    final statusColor = isValid ? scheme.primary : scheme.error;
+    final fallbackEntries =
+        result.revealedFields.isEmpty && result.revealedPredicates.isEmpty
+        ? _extractRevealedEntries(result.scopedClaims)
+        : const <_DisplayEntry>[];
+
+    return _SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: isValid
+                  ? scheme.primaryContainer.withValues(alpha: 0.28)
+                  : scheme.errorContainer.withValues(alpha: 0.42),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: statusColor.withValues(alpha: 0.28)),
+            ),
+            padding: const EdgeInsets.all(12),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Row(
-                  children: <Widget>[
-                    Icon(
-                      result.status.toLowerCase() == 'valid'
-                          ? Icons.verified_rounded
-                          : Icons.warning_amber_rounded,
-                      color: result.status.toLowerCase() == 'valid'
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context).colorScheme.error,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      result.status.toUpperCase(),
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ],
+                Icon(
+                  isValid
+                      ? Icons.workspace_premium_rounded
+                      : Icons.report_problem_rounded,
+                  color: statusColor,
+                  size: 28,
                 ),
-                const SizedBox(height: 6),
-                Text(result.message),
-                const SizedBox(height: 12),
-                if (result.revealedFields.isNotEmpty) ...<Widget>[
-                  Text(
-                    'Revealed Fields',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  const SizedBox(height: 8),
-                  ...result.revealedFields.entries.map(
-                    (entry) => Padding(
-                      padding: const EdgeInsets.only(bottom: 7),
-                      child: _LabeledValueRow(
-                        label: prettifyKey(entry.key),
-                        value: prettifyValue(entry.value),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Proof certificate',
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
-                  ),
-                ],
-                if (result.revealedPredicates.isNotEmpty) ...<Widget>[
-                  const SizedBox(height: 6),
-                  Text(
-                    'Predicates',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  const SizedBox(height: 8),
-                  ...result.revealedPredicates.map(
-                    (predicate) => Padding(
-                      padding: const EdgeInsets.only(bottom: 7),
-                      child: _PredicateRow(predicate: predicate),
-                    ),
-                  ),
-                ],
-                if (result.revealedFields.isEmpty &&
-                    result.revealedPredicates.isEmpty) ...<Widget>[
-                  Text(
-                    'Revealed Claims',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  const SizedBox(height: 8),
-                  ..._extractRevealedEntries(result.scopedClaims).map(
-                    (entry) => Padding(
-                      padding: const EdgeInsets.only(bottom: 7),
-                      child: _LabeledValueRow(
-                        label: entry.label,
-                        value: entry.value,
+                      const SizedBox(height: 2),
+                      Text(
+                        _shareViewStatusLabel(result.status),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: statusColor,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _certificateMessage(result),
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
                   ),
-                ],
-                if ((result.receipt['signature'] as String?)?.isNotEmpty ==
-                    true) ...<Widget>[
-                  const SizedBox(height: 14),
-                  _ReceiptVerifyTile(
-                    signature: result.receipt['signature'] as String,
-                    shareClient: _shareClient,
-                  ),
-                ],
+                ),
               ],
             ),
           ),
-      ],
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: <Widget>[
+              _CertificateFact(
+                icon: Icons.public_rounded,
+                label: 'Source',
+                value: _certificateSource(result),
+              ),
+              _CertificateFact(
+                icon: Icons.schedule_rounded,
+                label: 'Checked',
+                value: _certificateCheckedAt(result),
+              ),
+              _CertificateFact(
+                icon: Icons.lock_open_rounded,
+                label: 'Access',
+                value: _certificateAccessSummary(result),
+              ),
+              _CertificateFact(
+                icon: Icons.visibility_rounded,
+                label: 'Shows',
+                value: _certificateRevealSummary(result, fallbackEntries),
+              ),
+            ],
+          ),
+          if (result.revealedFields.isNotEmpty) ...<Widget>[
+            const SizedBox(height: 14),
+            Text('Shared details', style: theme.textTheme.titleSmall),
+            const SizedBox(height: 8),
+            ...result.revealedFields.entries.map(
+              (entry) => Padding(
+                padding: const EdgeInsets.only(bottom: 7),
+                child: _LabeledValueRow(
+                  label: prettifyKey(entry.key),
+                  value: prettifyValue(entry.value),
+                ),
+              ),
+            ),
+          ],
+          if (result.revealedPredicates.isNotEmpty) ...<Widget>[
+            const SizedBox(height: 8),
+            Text('Private checks', style: theme.textTheme.titleSmall),
+            const SizedBox(height: 8),
+            ...result.revealedPredicates.map(
+              (predicate) => Padding(
+                padding: const EdgeInsets.only(bottom: 7),
+                child: _PredicateRow(predicate: predicate),
+              ),
+            ),
+          ],
+          if (fallbackEntries.isNotEmpty) ...<Widget>[
+            const SizedBox(height: 14),
+            Text('Shared details', style: theme.textTheme.titleSmall),
+            const SizedBox(height: 8),
+            ...fallbackEntries.map(
+              (entry) => Padding(
+                padding: const EdgeInsets.only(bottom: 7),
+                child: _LabeledValueRow(label: entry.label, value: entry.value),
+              ),
+            ),
+          ],
+          if ((result.receipt['signature'] as String?)?.isNotEmpty ==
+              true) ...<Widget>[
+            const SizedBox(height: 14),
+            _ReceiptVerifyTile(
+              signature: result.receipt['signature'] as String,
+              shareClient: _shareClient,
+            ),
+          ],
+        ],
+      ),
     );
+  }
+
+  String _certificateMessage(ShareViewResponse result) {
+    final message = result.message.trim();
+    if (result.status.toLowerCase() == 'valid' &&
+        message.toLowerCase() == 'verified credential') {
+      return 'This proof is valid and the details below are safe to review.';
+    }
+    if (message.isNotEmpty) return message;
+    return result.status.toLowerCase() == 'valid'
+        ? 'This proof is valid.'
+        : 'This proof could not be verified.';
+  }
+
+  String _certificateSource(ShareViewResponse result) {
+    final verifierResult = result.receipt['verifierResult'];
+    final verification = result.verification;
+    final candidates = <Object?>[
+      result.share['sourceDomain'],
+      result.share['targetHost'],
+      result.receipt['sourceDomain'],
+      if (verifierResult is Map<String, Object?>) verifierResult['targetHost'],
+      if (verifierResult is Map<String, Object?>) verifierResult['host'],
+      verification['targetHost'],
+      verification['host'],
+    ];
+    for (final value in candidates) {
+      final source = _providerDomainValue(value);
+      if (source.isNotEmpty) return source;
+    }
+    return 'Not shown';
+  }
+
+  String _certificateCheckedAt(ShareViewResponse result) {
+    final checkedAt = _stringValue(result.receipt['verifiedAt']);
+    if (checkedAt.isEmpty) return 'Just now';
+    return _humanizeIsoDate(checkedAt) ?? checkedAt;
+  }
+
+  String _certificateAccessSummary(ShareViewResponse result) {
+    final share = result.share;
+    final parts = <String>[];
+    final maxViews = _intValue(share['maxViews']);
+    final views = _intValue(share['views']);
+    final expiresAtUtc = _stringValue(share['expiresAtUtc']);
+
+    if (share['oneTimeView'] == true) {
+      parts.add('One-time link');
+    } else if (maxViews != null) {
+      final viewed = views == null ? '' : '$views/';
+      parts.add('$viewed$maxViews views');
+    }
+    if (expiresAtUtc.isNotEmpty) {
+      parts.add('Until ${_humanizeIsoDate(expiresAtUtc) ?? expiresAtUtc}');
+    }
+    if (parts.isNotEmpty) return parts.join(' · ');
+    return result.status.toLowerCase() == 'valid' ? 'Open now' : 'Closed';
+  }
+
+  String _certificateRevealSummary(
+    ShareViewResponse result,
+    List<_DisplayEntry> fallbackEntries,
+  ) {
+    final fieldCount = result.revealedFields.isNotEmpty
+        ? result.revealedFields.length
+        : fallbackEntries.length;
+    final checkCount = result.revealedPredicates.length;
+    final parts = <String>[];
+    if (fieldCount > 0) {
+      parts.add('$fieldCount detail${fieldCount == 1 ? '' : 's'}');
+    }
+    if (checkCount > 0) {
+      parts.add('$checkCount check${checkCount == 1 ? '' : 's'}');
+    }
+    return parts.isEmpty ? 'No details shown' : parts.join(' + ');
+  }
+
+  String _stringValue(Object? value) {
+    if (value == null) return '';
+    if (value is String) return value.trim();
+    return value.toString().trim();
+  }
+
+  String _providerDomainValue(Object? value) {
+    var source = _stringValue(value);
+    if (source.isEmpty) return '';
+    source = source.replaceFirst(
+      RegExp(
+        r'^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+',
+        caseSensitive: false,
+      ),
+      '',
+    );
+    final uri = Uri.tryParse(
+      source.contains('://') ? source : 'https://$source',
+    );
+    if (uri != null && uri.host.trim().isNotEmpty) {
+      return uri.host.trim().toLowerCase();
+    }
+    return source
+        .split('/')
+        .first
+        .split('?')
+        .first
+        .split('#')
+        .first
+        .toLowerCase();
+  }
+
+  int? _intValue(Object? value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
   }
 }
 
@@ -1552,6 +1708,60 @@ class _SectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(padding: const EdgeInsets.all(14), child: child),
+    );
+  }
+}
+
+class _CertificateFact extends StatelessWidget {
+  const _CertificateFact({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    return Container(
+      constraints: const BoxConstraints(minWidth: 132, maxWidth: 230),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Icon(icon, size: 18, color: scheme.primary),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.labelSmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(value, style: textTheme.bodySmall),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1658,46 +1868,6 @@ class _ProviderChoiceTile extends StatelessWidget {
   }
 }
 
-class _ShareStatusPill extends StatelessWidget {
-  const _ShareStatusPill({required this.status});
-
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    late Color background;
-    late Color foreground;
-    if (status == 'shared') {
-      background = scheme.secondaryContainer;
-      foreground = scheme.onSecondaryContainer;
-    } else if (status == 'revoked') {
-      background = scheme.errorContainer;
-      foreground = scheme.onErrorContainer;
-    } else {
-      background = scheme.surfaceContainerHighest;
-      foreground = scheme.onSurfaceVariant;
-    }
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        child: Text(
-          status.replaceAll('_', ' '),
-          style: TextStyle(
-            color: foreground,
-            fontWeight: FontWeight.w600,
-            fontSize: 12,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _ProofLifecycleTimeline extends StatelessWidget {
   const _ProofLifecycleTimeline({required this.record});
 
@@ -1716,13 +1886,13 @@ class _ProofLifecycleTimeline extends StatelessWidget {
     final revoked = status == 'revoked';
     final steps = <_LifecycleStepData>[
       _LifecycleStepData(
-        label: 'Local',
+        label: 'Saved',
         icon: Icons.lock_outline_rounded,
         completed: true,
         current: status == 'local_only',
       ),
       _LifecycleStepData(
-        label: 'Uploaded',
+        label: 'Ready',
         icon: Icons.cloud_done_outlined,
         completed: uploaded,
         current: status == 'uploaded',
@@ -1976,6 +2146,23 @@ String _formatPolicyDuration(int minutes) {
   return '$minutes minute${minutes == 1 ? '' : 's'}';
 }
 
+String _shareViewStatusLabel(String status) {
+  switch (status.toLowerCase()) {
+    case 'valid':
+      return 'Valid';
+    case 'revoked':
+      return 'Revoked';
+    case 'expired':
+      return 'Expired';
+    case 'consumed':
+      return 'Already used';
+    case 'max_views_reached':
+      return 'View limit reached';
+    default:
+      return 'Not valid';
+  }
+}
+
 class ShareDraft {
   const ShareDraft({required this.selection, required this.policy});
 
@@ -2206,13 +2393,13 @@ class _ShareSelectionSheetState extends State<_ShareSelectionSheet> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Only the fields and predicates you select will be shown to anyone who scans the QR.',
+                'Only the details and checks you choose will be shown to someone opening the link.',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               const SizedBox(height: 14),
               if (widget.recipes.isNotEmpty) ...<Widget>[
                 Text(
-                  'Proof recipes',
+                  'Quick share options',
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
                 const SizedBox(height: 8),
@@ -2239,7 +2426,7 @@ class _ShareSelectionSheetState extends State<_ShareSelectionSheet> {
                 const SizedBox(height: 8),
                 Text(
                   _selectedRecipeId == null
-                      ? 'Pick a recipe to prefill safe fields and conditions. Disabled recipes need fields this proof does not contain.'
+                      ? 'Pick an option to prefill safe details and checks. Disabled options need details this proof does not contain.'
                       : widget.recipes
                             .firstWhere(
                               (recipe) => recipe.id == _selectedRecipeId,
@@ -2250,7 +2437,7 @@ class _ShareSelectionSheetState extends State<_ShareSelectionSheet> {
                 const SizedBox(height: 14),
               ],
               Text(
-                'Share policy',
+                'Link access',
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               const SizedBox(height: 8),
@@ -2284,7 +2471,7 @@ class _ShareSelectionSheetState extends State<_ShareSelectionSheet> {
               ),
               const SizedBox(height: 14),
               Text(
-                'Fields to reveal',
+                'Details to show',
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               const SizedBox(height: 6),
@@ -2314,7 +2501,7 @@ class _ShareSelectionSheetState extends State<_ShareSelectionSheet> {
               Row(
                 children: <Widget>[
                   Text(
-                    'Predicates',
+                    'Private checks',
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                   const Spacer(),
@@ -2324,7 +2511,7 @@ class _ShareSelectionSheetState extends State<_ShareSelectionSheet> {
                       Icons.add_circle_outline_rounded,
                       size: 18,
                     ),
-                    label: const Text('Add predicate'),
+                    label: const Text('Add check'),
                   ),
                 ],
               ),
@@ -2337,12 +2524,12 @@ class _ShareSelectionSheetState extends State<_ShareSelectionSheet> {
                     children: <Widget>[
                       for (final threshold in const [18, 21, 60])
                         ActionChip(
-                          label: Text('Age ≥ $threshold'),
+                          label: Text('Age $threshold+'),
                           onPressed: () {
                             _addPredicate(
                               RevealPredicate(
                                 id: 'p${++_predicateCounter}',
-                                label: 'Age over $threshold',
+                                label: 'Age $threshold+',
                                 sourcePath: dobPath!,
                                 transform: 'dateToYearsTillNow',
                                 op: '>=',
@@ -2358,7 +2545,7 @@ class _ShareSelectionSheetState extends State<_ShareSelectionSheet> {
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 6),
                   child: Text(
-                    'No predicates added.',
+                    'No private checks added.',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ),
@@ -2425,7 +2612,7 @@ class _ShareSelectionSheetState extends State<_ShareSelectionSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text(
-                        'Preview',
+                        'What they will see',
                         style: Theme.of(context).textTheme.labelLarge,
                       ),
                       const SizedBox(height: 4),
@@ -2470,7 +2657,7 @@ class _ShareSelectionSheetState extends State<_ShareSelectionSheet> {
                                 policy: _selectedPolicy,
                               ),
                             ),
-                      child: const Text('Share QR'),
+                      child: const Text('Create Link'),
                     ),
                   ),
                 ],
@@ -2587,7 +2774,7 @@ class _PredicateEditorDialogState extends State<_PredicateEditorDialog> {
   Widget build(BuildContext context) {
     final isBetween = _op == 'between';
     return AlertDialog(
-      title: Text(widget.initial == null ? 'Add Predicate' : 'Edit Predicate'),
+      title: Text(widget.initial == null ? 'Add Check' : 'Edit Check'),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -2595,7 +2782,7 @@ class _PredicateEditorDialogState extends State<_PredicateEditorDialog> {
           children: <Widget>[
             DropdownButtonFormField<String>(
               initialValue: _path,
-              decoration: const InputDecoration(labelText: 'Source field'),
+              decoration: const InputDecoration(labelText: 'Source detail'),
               items: widget.paths
                   .map(
                     (path) => DropdownMenuItem<String>(
@@ -2616,7 +2803,7 @@ class _PredicateEditorDialogState extends State<_PredicateEditorDialog> {
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
               initialValue: _transform,
-              decoration: const InputDecoration(labelText: 'Transform'),
+              decoration: const InputDecoration(labelText: 'How to read it'),
               items: _transforms.entries
                   .map(
                     (entry) => DropdownMenuItem<String>(
@@ -2635,7 +2822,7 @@ class _PredicateEditorDialogState extends State<_PredicateEditorDialog> {
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
               initialValue: _op,
-              decoration: const InputDecoration(labelText: 'Operator'),
+              decoration: const InputDecoration(labelText: 'Rule'),
               items: _operators
                   .map(
                     (op) =>
@@ -2653,14 +2840,14 @@ class _PredicateEditorDialogState extends State<_PredicateEditorDialog> {
             TextField(
               controller: _valueController,
               decoration: InputDecoration(
-                labelText: isBetween ? 'Lower bound' : 'Compared value',
+                labelText: isBetween ? 'Minimum value' : 'Required value',
               ),
             ),
             if (isBetween) ...<Widget>[
               const SizedBox(height: 8),
               TextField(
                 controller: _value2Controller,
-                decoration: const InputDecoration(labelText: 'Upper bound'),
+                decoration: const InputDecoration(labelText: 'Maximum value'),
               ),
             ],
             const SizedBox(height: 8),
@@ -2708,7 +2895,7 @@ class _PredicateRow extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final satisfied = predicate['satisfied'] == true;
     final evaluable = predicate['evaluable'] != false;
-    final label = (predicate['label'] as String?) ?? 'Predicate';
+    final label = (predicate['label'] as String?) ?? 'Check';
     final expression = (predicate['expression'] as String?) ?? '';
     final reason = (predicate['reason'] as String?) ?? '';
     final color = !evaluable
@@ -2820,10 +3007,7 @@ class _ReceiptVerifyTileState extends State<_ReceiptVerifyTile> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(
-            'Receipt signature',
-            style: Theme.of(context).textTheme.labelMedium,
-          ),
+          Text('Receipt', style: Theme.of(context).textTheme.labelMedium),
           const SizedBox(height: 6),
           Row(
             children: <Widget>[
@@ -2838,7 +3022,7 @@ class _ReceiptVerifyTileState extends State<_ReceiptVerifyTile> {
               Expanded(
                 child: Text(
                   result == null
-                      ? 'Tap to verify HMAC signature on the service receipt.'
+                      ? 'Check that this receipt was issued by the service.'
                       : result.message.isNotEmpty
                       ? result.message
                       : (result.ok
@@ -2850,7 +3034,7 @@ class _ReceiptVerifyTileState extends State<_ReceiptVerifyTile> {
               const SizedBox(width: 6),
               FilledButton.tonal(
                 onPressed: _busy ? null : _verify,
-                child: Text(_busy ? '...' : 'Verify'),
+                child: Text(_busy ? '...' : 'Check'),
               ),
             ],
           ),

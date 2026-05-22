@@ -207,6 +207,7 @@ class ShareViewResponse {
     required this.message,
     required this.verification,
     required this.scopedClaims,
+    required this.share,
     required this.receipt,
   });
 
@@ -218,6 +219,7 @@ class ShareViewResponse {
   //     "predicates": [ {label, expression, satisfied, evaluable, reason?} ] }
   // Older shares without selection still return a flat field map.
   final Map<String, Object?> scopedClaims;
+  final Map<String, Object?> share;
   final Map<String, Object?> receipt;
 
   factory ShareViewResponse.fromJson(Map<String, Object?> json) {
@@ -230,6 +232,8 @@ class ShareViewResponse {
       scopedClaims:
           (json['scopedClaims'] as Map<String, Object?>?) ??
           const <String, Object?>{},
+      share:
+          (json['share'] as Map<String, Object?>?) ?? const <String, Object?>{},
       receipt:
           (json['receipt'] as Map<String, Object?>?) ??
           const <String, Object?>{},
