@@ -80,7 +80,8 @@ display:
     "oneTimeView": true,
     "maxViews": 1,
     "views": 1,
-    "sourceDomain": "graphql.app.gusto.com"
+    "sourceDomain": "graphql.app.gusto.com",
+    "proofCreatedAtUtc": "2026-05-07T10:00:00.000Z"
   }
 }
 ```

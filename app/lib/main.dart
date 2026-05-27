@@ -94,7 +94,7 @@ class ZkBackpackApp extends StatelessWidget {
     return MaterialApp(
       title: 'ZK Backpack',
       debugShowCheckedModeBanner: false,
-      themeMode: ThemeMode.system,
+      themeMode: ThemeMode.light,
       theme: _buildTheme(light),
       darkTheme: _buildTheme(dark),
       home: const ZkBackpackHomePage(),
@@ -117,22 +117,22 @@ class ZkBackpackApp extends StatelessWidget {
       cardTheme: CardThemeData(
         elevation: 0,
         color: scheme.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         margin: EdgeInsets.zero,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: scheme.surface.withValues(alpha: 0.92),
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 16,
+          horizontal: 14,
+          vertical: 13,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(color: scheme.outlineVariant),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(color: scheme.primary, width: 1.5),
         ),
       ),
@@ -142,25 +142,25 @@ class ZkBackpackApp extends StatelessWidget {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size(48, 54),
+          minimumSize: const Size(48, 48),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
           ),
           textStyle: const TextStyle(fontWeight: FontWeight.w800),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size(48, 54),
+          minimumSize: const Size(48, 48),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
           ),
           side: BorderSide(color: scheme.outlineVariant),
           textStyle: const TextStyle(fontWeight: FontWeight.w800),
         ),
       ),
       chipTheme: ChipThemeData(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         side: BorderSide.none,
         labelStyle: TextStyle(
           color: scheme.onSurface,
@@ -1069,7 +1069,7 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
               child: Padding(
                 padding: EdgeInsets.fromLTRB(
                   18,
-                  22,
+                  14,
                   18,
                   bottomInset > 0 ? 8 : 18,
                 ),
@@ -1078,15 +1078,29 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                     _BackpackHeader(
                       status: _running ? _statusMessage : 'Local first',
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 14),
                     _BackpackTabs(
                       selectedIndex: _tabIndex,
                       onChanged: _onDestinationSelected,
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 18),
                     Expanded(
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 220),
+                        layoutBuilder:
+                            (
+                              Widget? currentChild,
+                              List<Widget> previousChildren,
+                            ) {
+                              return Stack(
+                                children: <Widget>[
+                                  for (final child in previousChildren)
+                                    Positioned.fill(child: child),
+                                  if (currentChild != null)
+                                    Positioned.fill(child: currentChild),
+                                ],
+                              );
+                            },
                         child: KeyedSubtree(
                           key: ValueKey<int>(_tabIndex),
                           child: _buildCurrentTab(),
@@ -1118,11 +1132,12 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
     final groupedProviders = _providersByCategory();
     final categories = _orderedCategoryKeys(groupedProviders.keys);
     return SingleChildScrollView(
-      child: Center(
+      child: Align(
+        alignment: Alignment.topCenter,
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 520),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
+            padding: const EdgeInsets.symmetric(vertical: 8),
             child: Column(
               children: <Widget>[
                 _SectionCard(
@@ -1131,18 +1146,19 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                     children: <Widget>[
                       Text(
                         'Generate a proof',
-                        style: Theme.of(context).textTheme.headlineSmall
-                            ?.copyWith(
-                              color: _ink,
-                              fontWeight: FontWeight.w900,
-                            ),
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: _ink,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 7),
                       Text(
                         'Choose a source. The proof is encrypted in your backpack and shared only when you ask.',
-                        style: Theme.of(context).textTheme.bodyMedium,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(color: _mutedInk),
                       ),
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 14),
                       for (final category in categories) ...<Widget>[
                         _CategoryHeader(
                           icon: _iconForCategory(category),
@@ -1150,10 +1166,10 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                           subtitle:
                               '${groupedProviders[category]!.length} source${groupedProviders[category]!.length == 1 ? '' : 's'}',
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 7),
                         ...groupedProviders[category]!.map(
                           (item) => Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.only(bottom: 7),
                             child: _ProviderChoiceTile(
                               provider: item,
                               selected: provider?.providerId == item.providerId,
@@ -1167,19 +1183,19 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
                       ],
                       if (provider != null) ...<Widget>[
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 10),
                         Container(
                           width: double.infinity,
                           decoration: BoxDecoration(
                             color: Theme.of(
                               context,
                             ).colorScheme.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(14),
                           ),
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(10),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
@@ -1199,7 +1215,7 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                           ),
                         ),
                       ],
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 14),
                       SizedBox(
                         width: double.infinity,
                         child: FilledButton.icon(
@@ -1214,22 +1230,22 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                   ),
                 ),
                 if (_running) ...<Widget>[
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
                   _SectionCard(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
                         Text(
                           'Adding proof',
-                          style: Theme.of(context).textTheme.titleMedium
+                          style: Theme.of(context).textTheme.titleSmall
                               ?.copyWith(
                                 fontWeight: FontWeight.w900,
                                 color: _ink,
                               ),
                         ),
-                        const SizedBox(height: 12),
-                        LinearProgressIndicator(value: _generationPercent),
                         const SizedBox(height: 10),
+                        LinearProgressIndicator(value: _generationPercent),
+                        const SizedBox(height: 8),
                         Text(
                           _generationStep.isEmpty
                               ? 'Opening a secure session...'
@@ -1250,35 +1266,36 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
   Widget _buildVaultTab() {
     if (_proofs.isEmpty) {
       return ListView(
-        padding: const EdgeInsets.only(bottom: 24),
+        padding: const EdgeInsets.only(bottom: 18),
         children: <Widget>[
           Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 460),
               child: _SectionCard(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
-                      const _LogoMark(size: 70),
-                      const SizedBox(height: 18),
+                      const _LogoMark(size: 56),
+                      const SizedBox(height: 14),
                       Text(
                         'Your backpack is empty',
-                        style: Theme.of(context).textTheme.headlineSmall
-                            ?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              color: _ink,
-                            ),
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
+                          color: _ink,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 8),
                       Text(
                         'Generate your first proof and keep it encrypted locally until you choose to share.',
-                        style: Theme.of(context).textTheme.bodyMedium,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(color: _mutedInk),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 16),
                       FilledButton.icon(
                         onPressed: () {
                           setState(() {
@@ -1300,7 +1317,7 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
     return Stack(
       children: <Widget>[
         ListView(
-          padding: const EdgeInsets.only(bottom: 24),
+          padding: const EdgeInsets.only(bottom: 18),
           children: <Widget>[
             for (final proof in _proofs) ...<Widget>[
               _ProofVaultCard(
@@ -1320,7 +1337,7 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                     : null,
                 onDelete: () => _confirmAndDelete(proof),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 12),
             ],
           ],
         ),
@@ -1345,65 +1362,88 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
     final result = _scanResult;
     return ListView(
       children: <Widget>[
-        _SectionCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                'Scan a shared proof',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: _ink,
-                  fontWeight: FontWeight.w900,
-                ),
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 620),
+            child: _SectionCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    'Scan a shared proof',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: _ink,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Paste a share link or token to verify the proof and review only the released details.',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: _mutedInk),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _shareTokenController,
+                    decoration: const InputDecoration(
+                      labelText: 'Share link or token',
+                      prefixIcon: Icon(Icons.link_rounded),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    onPressed: _processingScan
+                        ? null
+                        : () {
+                            final raw = _shareTokenController.text.trim();
+                            if (raw.isEmpty) {
+                              _showErrorSnack('Paste a share link first.');
+                              return;
+                            }
+                            final token = _extractToken(raw);
+                            unawaited(_openShareInBrowserView(token));
+                          },
+                    icon: const Icon(Icons.verified),
+                    label: const Text('Verify Proof'),
+                  ),
+                ],
               ),
-              const SizedBox(height: 6),
-              Text(
-                'Paste a share link or token to verify the proof and review only the released details.',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _shareTokenController,
-                decoration: const InputDecoration(
-                  labelText: 'Share link or token',
-                  prefixIcon: Icon(Icons.link_rounded),
-                ),
-              ),
-              const SizedBox(height: 12),
-              FilledButton.icon(
-                onPressed: _processingScan
-                    ? null
-                    : () {
-                        final raw = _shareTokenController.text.trim();
-                        if (raw.isEmpty) {
-                          _showErrorSnack('Paste a share link first.');
-                          return;
-                        }
-                        final token = _extractToken(raw);
-                        unawaited(_openShareInBrowserView(token));
-                      },
-                icon: const Icon(Icons.verified),
-                label: const Text('Verify Proof'),
-              ),
-            ],
+            ),
           ),
         ),
         const SizedBox(height: 12),
         if (_processingScan)
-          const _SectionCard(
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
-              child: Center(child: CircularProgressIndicator()),
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 620),
+              child: const _SectionCard(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              ),
             ),
           ),
         if (_scanError != null)
-          _SectionCard(
-            child: Text(
-              _scanError!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 620),
+              child: _SectionCard(
+                child: Text(
+                  _scanError!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
             ),
           ),
-        if (result != null) _buildVerifyResultCard(result),
+        if (result != null)
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 620),
+              child: _buildVerifyResultCard(result),
+            ),
+          ),
       ],
     );
   }
@@ -1414,7 +1454,7 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
     final status = result.status.toLowerCase();
     final isValid = status == 'valid';
     final statusColor = isValid ? scheme.primary : scheme.error;
-    final verifiedAt = _certificateVerifiedAt(result);
+    final createdAt = _certificateCreatedAt(result);
     final fallbackEntries =
         result.revealedFields.isEmpty && result.revealedPredicates.isEmpty
         ? _extractRevealedEntries(result.scopedClaims)
@@ -1430,10 +1470,10 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
               color: isValid
                   ? scheme.primaryContainer.withValues(alpha: 0.28)
                   : scheme.errorContainer.withValues(alpha: 0.42),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(color: statusColor.withValues(alpha: 0.28)),
             ),
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(11),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
@@ -1442,29 +1482,29 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                       ? Icons.workspace_premium_rounded
                       : Icons.report_problem_rounded,
                   color: statusColor,
-                  size: 28,
+                  size: 24,
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 9),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text(
                         'Proof certificate',
-                        style: theme.textTheme.labelMedium?.copyWith(
+                        style: theme.textTheme.labelSmall?.copyWith(
                           color: scheme.onSurfaceVariant,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 1),
                       Text(
                         _shareViewStatusLabel(result.status),
-                        style: theme.textTheme.titleMedium?.copyWith(
+                        style: theme.textTheme.titleSmall?.copyWith(
                           color: statusColor,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 3),
                       Text(
                         _certificateMessage(result),
                         style: theme.textTheme.bodySmall,
@@ -1475,15 +1515,15 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Container(
             width: double.infinity,
             decoration: BoxDecoration(
               color: _panel,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: _line),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _line.withValues(alpha: 0.78)),
             ),
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(12),
             child: Column(
               children: <Widget>[
                 _CertificateDetailRow(
@@ -1491,20 +1531,20 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                   label: 'Data source',
                   value: _certificateSource(result),
                 ),
-                const Divider(height: 18, color: _line),
+                const Divider(height: 14, color: _line),
                 _CertificateDetailRow(
                   icon: Icons.schedule_rounded,
-                  label: 'Verified at',
-                  value: verifiedAt.timestamp,
-                  subtitle: verifiedAt.relative,
+                  label: 'Created at',
+                  value: createdAt.timestamp,
+                  subtitle: createdAt.relative,
                 ),
-                const Divider(height: 18, color: _line),
+                const Divider(height: 14, color: _line),
                 _CertificateDetailRow(
                   icon: Icons.lock_open_rounded,
                   label: 'Access',
                   value: _certificateAccessSummary(result),
                 ),
-                const Divider(height: 18, color: _line),
+                const Divider(height: 14, color: _line),
                 _CertificateDetailRow(
                   icon: Icons.visibility_rounded,
                   label: 'Shows',
@@ -1514,12 +1554,12 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
             ),
           ),
           if (result.revealedFields.isNotEmpty) ...<Widget>[
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             Text('Shared details', style: theme.textTheme.titleSmall),
-            const SizedBox(height: 8),
+            const SizedBox(height: 7),
             ...result.revealedFields.entries.map(
               (entry) => Padding(
-                padding: const EdgeInsets.only(bottom: 7),
+                padding: const EdgeInsets.only(bottom: 6),
                 child: _LabeledValueRow(
                   label: prettifyKey(entry.key),
                   value: prettifyValue(entry.value),
@@ -1528,30 +1568,30 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
             ),
           ],
           if (result.revealedPredicates.isNotEmpty) ...<Widget>[
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text('Private checks', style: theme.textTheme.titleSmall),
-            const SizedBox(height: 8),
+            const SizedBox(height: 7),
             ...result.revealedPredicates.map(
               (predicate) => Padding(
-                padding: const EdgeInsets.only(bottom: 7),
+                padding: const EdgeInsets.only(bottom: 6),
                 child: _PredicateRow(predicate: predicate),
               ),
             ),
           ],
           if (fallbackEntries.isNotEmpty) ...<Widget>[
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             Text('Shared details', style: theme.textTheme.titleSmall),
-            const SizedBox(height: 8),
+            const SizedBox(height: 7),
             ...fallbackEntries.map(
               (entry) => Padding(
-                padding: const EdgeInsets.only(bottom: 7),
+                padding: const EdgeInsets.only(bottom: 6),
                 child: _LabeledValueRow(label: entry.label, value: entry.value),
               ),
             ),
           ],
           if ((result.receipt['signature'] as String?)?.isNotEmpty ==
               true) ...<Widget>[
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             _ReceiptVerifyTile(
               signature: result.receipt['signature'] as String,
               shareClient: _shareClient,
@@ -1603,21 +1643,24 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
     return 'Not shown';
   }
 
-  _CertificateTimestamp _certificateVerifiedAt(ShareViewResponse result) {
-    final checkedAt = _firstStringValue(<Object?>[
-      result.receipt['verifiedAt'],
-      result.verification['verifiedAt'],
-      result.share['verifiedAt'],
+  _CertificateTimestamp _certificateCreatedAt(ShareViewResponse result) {
+    final createdAt = _firstStringValue(<Object?>[
+      result.receipt['proofCreatedAtUtc'],
+      result.receipt['proofCreatedAt'],
+      result.verification['proofCreatedAtUtc'],
+      result.verification['proofCreatedAt'],
+      result.share['proofCreatedAtUtc'],
+      result.share['proofCreatedAt'],
     ]);
-    if (checkedAt.isEmpty) {
-      return const _CertificateTimestamp(timestamp: 'Just now', relative: '');
+    if (createdAt.isEmpty) {
+      return const _CertificateTimestamp(timestamp: 'Not shown', relative: '');
     }
-    final parsed = DateTime.tryParse(checkedAt);
+    final parsed = DateTime.tryParse(createdAt);
     if (parsed == null) {
-      return _CertificateTimestamp(timestamp: checkedAt, relative: '');
+      return _CertificateTimestamp(timestamp: createdAt, relative: '');
     }
     return _CertificateTimestamp(
-      timestamp: _humanizeIsoDate(checkedAt) ?? checkedAt,
+      timestamp: _humanizeIsoDate(createdAt) ?? createdAt,
       relative: _relativeAgeLabel(parsed),
     );
   }
@@ -1735,50 +1778,60 @@ class _BackpackHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    return Row(
-      children: <Widget>[
-        const _LogoMark(size: 58),
-        const SizedBox(width: 18),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                'ZK Backpack',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: textTheme.headlineSmall?.copyWith(
-                  color: _ink,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0,
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 7, 10, 7),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.54),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: _line.withValues(alpha: 0.72)),
+      ),
+      child: Row(
+        children: <Widget>[
+          const _LogoMark(size: 42),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'ZK Backpack',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.titleLarge?.copyWith(
+                    color: _ink,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0,
+                    height: 1,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'Private proof vault',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: textTheme.titleMedium?.copyWith(
-                  color: _mutedInk,
-                  fontWeight: FontWeight.w500,
+                const SizedBox(height: 2),
+                Text(
+                  'Private proof vault',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: _mutedInk,
+                    fontWeight: FontWeight.w700,
+                    height: 1.1,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        const SizedBox(width: 12),
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 160),
-          child: _SoftPill(
-            label: status,
-            foreground: _tealDark,
-            background: Colors.white.withValues(alpha: 0.45),
-            border: _line,
-            horizontalPadding: 18,
-            verticalPadding: 11,
+          const SizedBox(width: 10),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 132),
+            child: _SoftPill(
+              label: status,
+              foreground: _tealDark,
+              background: Colors.white.withValues(alpha: 0.66),
+              border: _line.withValues(alpha: 0.82),
+              horizontalPadding: 12,
+              verticalPadding: 7,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -1827,21 +1880,27 @@ class _BackpackTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final labels = const <String>['Vault', 'Generate', 'Scan'];
+    final icons = const <IconData>[
+      Icons.lock_outline_rounded,
+      Icons.auto_awesome_rounded,
+      Icons.qr_code_scanner_rounded,
+    ];
     return Container(
-      height: 86,
+      height: 58,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(31),
-        border: Border.all(color: _line, width: 1.5),
+        color: Colors.white.withValues(alpha: 0.64),
+        borderRadius: BorderRadius.circular(21),
+        border: Border.all(color: _line.withValues(alpha: 0.78)),
       ),
-      padding: const EdgeInsets.all(7),
+      padding: const EdgeInsets.all(4),
       child: Row(
         children: <Widget>[
           for (var i = 0; i < labels.length; i++)
             Expanded(
               child: Padding(
-                padding: EdgeInsets.only(right: i == labels.length - 1 ? 0 : 6),
+                padding: EdgeInsets.only(right: i == labels.length - 1 ? 0 : 4),
                 child: _BackpackTabButton(
+                  icon: icons[i],
                   label: labels[i],
                   selected: i == selectedIndex,
                   onTap: () => onChanged(i),
@@ -1856,20 +1915,24 @@ class _BackpackTabs extends StatelessWidget {
 
 class _BackpackTabButton extends StatelessWidget {
   const _BackpackTabButton({
+    required this.icon,
     required this.label,
     required this.selected,
     required this.onTap,
   });
 
+  final IconData icon;
   final String label;
   final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final selectedForeground = Colors.white;
+    final idleForeground = _mutedInk;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(17),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOutCubic,
@@ -1877,15 +1940,42 @@ class _BackpackTabButton extends StatelessWidget {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: selected ? _teal : Colors.transparent,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(17),
+          boxShadow: selected
+              ? <BoxShadow>[
+                  BoxShadow(
+                    color: _teal.withValues(alpha: 0.15),
+                    blurRadius: 12,
+                    offset: const Offset(0, 5),
+                  ),
+                ]
+              : null,
         ),
-        child: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            color: selected ? Colors.white : _mutedInk,
-            fontWeight: FontWeight.w900,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(
+                icon,
+                size: 18,
+                color: selected ? selectedForeground : idleForeground,
+              ),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: selected ? selectedForeground : idleForeground,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1899,8 +1989,8 @@ class _SoftPill extends StatelessWidget {
     this.foreground = _green,
     this.background = _mint,
     this.border,
-    this.horizontalPadding = 14,
-    this.verticalPadding = 8,
+    this.horizontalPadding = 11,
+    this.verticalPadding = 6,
   });
 
   final String label;
@@ -1926,9 +2016,9 @@ class _SoftPill extends StatelessWidget {
         label,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
           color: foreground,
-          fontWeight: FontWeight.w900,
+          fontWeight: FontWeight.w800,
         ),
       ),
     );
@@ -1945,18 +2035,18 @@ class _SectionCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.94),
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: _line.withValues(alpha: 0.82)),
+        color: Colors.white.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _line.withValues(alpha: 0.64)),
         boxShadow: <BoxShadow>[
           BoxShadow(
-            color: _teal.withValues(alpha: 0.07),
-            blurRadius: 34,
-            offset: const Offset(0, 18),
+            color: _teal.withValues(alpha: 0.045),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
-      child: Padding(padding: const EdgeInsets.all(22), child: child),
+      child: Padding(padding: const EdgeInsets.all(16), child: child),
     );
   }
 }
@@ -1991,16 +2081,16 @@ class _CertificateDetailRow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Container(
-          width: 38,
-          height: 38,
+          width: 32,
+          height: 32,
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(13),
-            border: Border.all(color: _line),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: _line.withValues(alpha: 0.78)),
           ),
-          child: Icon(icon, size: 19, color: _teal),
+          child: Icon(icon, size: 17, color: _teal),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2009,23 +2099,23 @@ class _CertificateDetailRow extends StatelessWidget {
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: textTheme.labelMedium?.copyWith(
+                style: textTheme.labelSmall?.copyWith(
                   color: _mutedInk,
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              const SizedBox(height: 3),
+              const SizedBox(height: 2),
               Text(
                 value,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: textTheme.titleSmall?.copyWith(
+                style: textTheme.bodyMedium?.copyWith(
                   color: _ink,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
               if (subtitle.isNotEmpty) ...<Widget>[
-                const SizedBox(height: 2),
+                const SizedBox(height: 1),
                 Text(
                   subtitle,
                   maxLines: 1,
@@ -2061,22 +2151,22 @@ class _CategoryHeader extends StatelessWidget {
     return Row(
       children: <Widget>[
         Container(
-          width: 34,
-          height: 34,
+          width: 28,
+          height: 28,
           decoration: BoxDecoration(
             color: _mint,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(9),
           ),
-          child: Icon(icon, size: 18, color: _teal),
+          child: Icon(icon, size: 16, color: _teal),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 7),
         Expanded(
           child: Text(
             title.toUpperCase(),
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
               color: _mutedInk,
               fontWeight: FontWeight.w900,
-              letterSpacing: 1.1,
+              letterSpacing: 0.8,
             ),
           ),
         ),
@@ -2112,47 +2202,53 @@ class _ProviderChoiceTile extends StatelessWidget {
     final background = selected ? _mint : Colors.white.withValues(alpha: 0.72);
     return InkWell(
       onTap: enabled ? onTap : null,
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(16),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 140),
         width: double.infinity,
         decoration: BoxDecoration(
           color: background,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: borderColor),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected ? borderColor : borderColor.withValues(alpha: 0.76),
+          ),
         ),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Container(
-              width: 42,
-              height: 42,
+              width: 34,
+              height: 34,
               decoration: BoxDecoration(
                 color: selected ? _teal : _quietChip,
-                borderRadius: BorderRadius.circular(15),
+                borderRadius: BorderRadius.circular(11),
               ),
               child: Icon(
                 icon,
-                size: 22,
+                size: 19,
                 color: selected ? Colors.white : _mutedInk,
               ),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Text(
                     provider.label,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       color: _ink,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
                   Text(
                     provider.description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(color: _mutedInk),
@@ -2162,7 +2258,7 @@ class _ProviderChoiceTile extends StatelessWidget {
             ),
             if (selected) ...<Widget>[
               const SizedBox(width: 8),
-              Icon(Icons.check_circle_rounded, size: 22, color: _green),
+              Icon(Icons.check_circle_rounded, size: 18, color: _green),
             ],
           ],
         ),
@@ -2215,7 +2311,9 @@ class _ProofVaultCard extends StatelessWidget {
         record.shareStatus == 'uploaded';
     final revoked = record.shareStatus == 'revoked';
     final compactActionStyle = FilledButton.styleFrom(
+      minimumSize: const Size(48, 44),
       padding: const EdgeInsets.symmetric(horizontal: 10),
+      visualDensity: VisualDensity.compact,
     );
 
     return _SectionCard(
@@ -2224,9 +2322,9 @@ class _ProofVaultCard extends StatelessWidget {
         children: <Widget>[
           InkWell(
             onTap: onToggle,
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(16),
             child: Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.only(bottom: 4),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
@@ -2240,28 +2338,28 @@ class _ProofVaultCard extends StatelessWidget {
                               ?.copyWith(
                                 color: _mutedInk,
                                 fontWeight: FontWeight.w900,
-                                letterSpacing: 1.1,
+                                letterSpacing: 0.8,
                               ),
                         ),
-                        const SizedBox(height: 5),
+                        const SizedBox(height: 4),
                         Text(
                           title,
-                          style: Theme.of(context).textTheme.titleLarge
+                          style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(
                                 color: _ink,
                                 fontWeight: FontWeight.w900,
-                                height: 1.08,
+                                height: 1.05,
                               ),
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 4),
                         Text(
                           endpoint.isEmpty ? providerDescription : endpoint,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodyMedium
+                          style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(
                                 color: _mutedInk,
-                                fontWeight: FontWeight.w500,
+                                fontWeight: FontWeight.w600,
                               ),
                         ),
                       ],
@@ -2276,18 +2374,25 @@ class _ProofVaultCard extends StatelessWidget {
                         foreground: _tealDark,
                         background: Colors.white,
                         border: _line,
-                        horizontalPadding: 16,
-                        verticalPadding: 9,
+                        horizontalPadding: 12,
+                        verticalPadding: 6,
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       IconButton(
                         tooltip: 'Delete proof',
                         onPressed: onDelete,
                         style: IconButton.styleFrom(
                           backgroundColor: _quietChip,
                           foregroundColor: _mutedInk,
+                          minimumSize: const Size.square(34),
+                          padding: EdgeInsets.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          visualDensity: VisualDensity.compact,
                         ),
-                        icon: const Icon(Icons.delete_outline_rounded),
+                        icon: const Icon(
+                          Icons.delete_outline_rounded,
+                          size: 19,
+                        ),
                       ),
                     ],
                   ),
@@ -2295,10 +2400,10 @@ class _ProofVaultCard extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Wrap(
-            spacing: 10,
-            runSpacing: 8,
+            spacing: 8,
+            runSpacing: 6,
             children: <Widget>[
               const _SoftPill(label: 'Local'),
               _SoftPill(
@@ -2322,15 +2427,15 @@ class _ProofVaultCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 14),
           Container(
             width: double.infinity,
             decoration: BoxDecoration(
               color: _panel,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: _line),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _line.withValues(alpha: 0.78)),
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: previewEntries.isEmpty
                 ? _VaultPreviewRow(
                     label: 'Proof',
@@ -2350,12 +2455,12 @@ class _ProofVaultCard extends StatelessWidget {
                           value: previewEntries[i].value,
                         ),
                         if (i != previewEntries.length - 1)
-                          const Divider(height: 18, color: _line),
+                          const Divider(height: 14, color: _line),
                       ],
                     ],
                   ),
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 14),
           LayoutBuilder(
             builder: (context, constraints) {
               Widget shareButton() {
@@ -2375,7 +2480,9 @@ class _ProofVaultCard extends StatelessWidget {
                   style: FilledButton.styleFrom(
                     backgroundColor: _quietChip,
                     foregroundColor: _ink,
+                    minimumSize: const Size(48, 44),
                     padding: const EdgeInsets.symmetric(horizontal: 10),
+                    visualDensity: VisualDensity.compact,
                   ),
                 );
               }
@@ -2384,7 +2491,7 @@ class _ProofVaultCard extends StatelessWidget {
                 return Column(
                   children: <Widget>[
                     SizedBox(width: double.infinity, child: shareButton()),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     SizedBox(width: double.infinity, child: revokeButton()),
                   ],
                 );
@@ -2393,24 +2500,24 @@ class _ProofVaultCard extends StatelessWidget {
               return Row(
                 children: <Widget>[
                   Expanded(child: shareButton()),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Expanded(child: revokeButton()),
                 ],
               );
             },
           ),
           if (expanded) ...<Widget>[
-            const SizedBox(height: 18),
+            const SizedBox(height: 14),
             _ProofLifecycleTimeline(record: record),
-            const SizedBox(height: 10),
-            _LabeledValueRow(label: 'Created', value: createdLabel),
             const SizedBox(height: 8),
+            _LabeledValueRow(label: 'Created', value: createdLabel),
+            const SizedBox(height: 6),
             _LabeledValueRow(label: 'Source', value: endpoint),
             if (view != null && view!.revealedEntries.length > 2) ...<Widget>[
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               for (final entry in view!.revealedEntries.skip(2))
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.only(bottom: 6),
                   child: _LabeledValueRow(
                     label: entry.label,
                     value: entry.value,
@@ -2463,7 +2570,7 @@ class _VaultPreviewRow extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: _mutedInk,
               fontWeight: FontWeight.w600,
             ),
@@ -2476,7 +2583,7 @@ class _VaultPreviewRow extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.right,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: _ink,
               fontWeight: FontWeight.w900,
             ),
@@ -2534,9 +2641,9 @@ class _ProofLifecycleTimeline extends StatelessWidget {
       width: double.infinity,
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
       child: Row(
         children: <Widget>[
           for (var i = 0; i < steps.length; i++) ...<Widget>[
@@ -2586,14 +2693,14 @@ class _LifecycleStep extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: background,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Icon(data.icon, size: 16, color: color),
-          const SizedBox(height: 3),
+          Icon(data.icon, size: 15, color: color),
+          const SizedBox(height: 2),
           Text(
             data.label,
             maxLines: 1,
@@ -2621,15 +2728,36 @@ class _LabeledValueRow extends StatelessWidget {
       width: double.infinity,
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      child: Column(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(label, style: Theme.of(context).textTheme.labelMedium),
-          const SizedBox(height: 3),
-          Text(value, style: Theme.of(context).textTheme.bodyMedium),
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: _mutedInk,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              value,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.right,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: _ink,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -4109,10 +4237,10 @@ class _PredicateRow extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       child: Row(
         children: <Widget>[
           Icon(
@@ -4122,14 +4250,20 @@ class _PredicateRow extends StatelessWidget {
                 ? Icons.check_circle_rounded
                 : Icons.cancel_rounded,
             color: color,
+            size: 19,
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 9),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(label, style: Theme.of(context).textTheme.labelMedium),
-                const SizedBox(height: 3),
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
                 Text(
                   reason.isNotEmpty ? reason : expression,
                   style: Theme.of(context).textTheme.bodySmall,
@@ -4204,14 +4338,14 @@ class _ReceiptVerifyTileState extends State<_ReceiptVerifyTile> {
     return Container(
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
       ),
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(9),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text('Receipt', style: Theme.of(context).textTheme.labelMedium),
-          const SizedBox(height: 6),
+          const SizedBox(height: 5),
           Row(
             children: <Widget>[
               if (result != null)
@@ -4220,6 +4354,7 @@ class _ReceiptVerifyTileState extends State<_ReceiptVerifyTile> {
                       ? Icons.verified_user_rounded
                       : Icons.gpp_bad_rounded,
                   color: result.ok ? scheme.primary : scheme.error,
+                  size: 19,
                 ),
               if (result != null) const SizedBox(width: 6),
               Expanded(
@@ -4237,6 +4372,10 @@ class _ReceiptVerifyTileState extends State<_ReceiptVerifyTile> {
               const SizedBox(width: 6),
               FilledButton.tonal(
                 onPressed: _busy ? null : _verify,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(48, 38),
+                  visualDensity: VisualDensity.compact,
+                ),
                 child: Text(_busy ? '...' : 'Check'),
               ),
             ],

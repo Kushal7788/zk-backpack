@@ -115,7 +115,7 @@ function relativeAge(value) {
   return `${days} day${days === 1 ? '' : 's'} ago`;
 }
 
-function verifiedAtText(value) {
+function timestampWithAge(value) {
   if (!value) return '';
   const absolute = humanDate(value);
   const relative = relativeAge(value);
@@ -185,16 +185,19 @@ function sourceDomainFromPayload(payload) {
   return providerDomain(raw) || inferSourceDomainFromClaims(payload);
 }
 
-function verifiedAtFromPayload(payload) {
+function createdAtFromPayload(payload) {
   const share = payload && typeof payload.share === 'object' ? payload.share : {};
   const receipt =
     payload && typeof payload.receipt === 'object' ? payload.receipt : {};
   const verification =
     payload && typeof payload.verification === 'object' ? payload.verification : {};
   return firstStringValue([
-    receipt.verifiedAt,
-    verification.verifiedAt,
-    share.verifiedAt
+    receipt.proofCreatedAtUtc,
+    receipt.proofCreatedAt,
+    verification.proofCreatedAtUtc,
+    verification.proofCreatedAt,
+    share.proofCreatedAtUtc,
+    share.proofCreatedAt
   ]);
 }
 
@@ -275,7 +278,7 @@ createApp({
     const claims = ref({});
     const receipt = ref({});
     const share = ref({});
-    const verifiedAt = ref('');
+    const createdAt = ref('');
     const targetHost = ref('');
 
     const receiptVerification = ref(null);
@@ -460,12 +463,10 @@ createApp({
           value: sharePolicySummary.value
         }
       ];
-      if (verifiedAt.value) {
-        rows.push({
-          label: 'Verified at',
-          value: verifiedAtText(verifiedAt.value)
-        });
-      }
+      rows.push({
+        label: 'Created at',
+        value: createdAt.value ? timestampWithAge(createdAt.value) : 'Not available'
+      });
       const hash = receipt.value && receipt.value.artifactHash;
       if (hash) {
         rows.push({
@@ -477,11 +478,11 @@ createApp({
     });
 
     const metaLine = computed(() => {
-      const at = verifiedAt.value;
+      const at = createdAt.value;
       const host = targetHost.value;
       if (!at && !host) return '';
       const parts = [];
-      if (at) parts.push(`Verified ${verifiedAtText(at)}`);
+      if (at) parts.push(`Created ${timestampWithAge(at)}`);
       if (host) parts.push(host);
       return parts.join(' · ');
     });
@@ -503,7 +504,7 @@ createApp({
         claims.value = {};
         receipt.value = {};
         share.value = {};
-        verifiedAt.value = '';
+        createdAt.value = '';
         targetHost.value = '';
         receiptVerification.value = null;
         return;
@@ -515,7 +516,7 @@ createApp({
       claims.value = {};
       receipt.value = {};
       share.value = {};
-      verifiedAt.value = '';
+      createdAt.value = '';
       targetHost.value = '';
       receiptVerification.value = null;
       try {
@@ -529,7 +530,7 @@ createApp({
         claims.value = payload.scopedClaims ?? {};
         receipt.value = payload.receipt ?? {};
         share.value = payload.share ?? {};
-        verifiedAt.value = verifiedAtFromPayload(payload);
+        createdAt.value = createdAtFromPayload(payload);
         targetHost.value = sourceDomainFromPayload(payload) || extractHost(payload);
       } catch (error) {
         status.value = 'invalid';

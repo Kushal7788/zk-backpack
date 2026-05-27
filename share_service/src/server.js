@@ -324,17 +324,21 @@ async function verifyToken(token) {
   }
   const artifact = decryptJson(masterKey, encryptedPayload);
   const sourceDomain = sourceDomainForProof(proof, artifact);
+  const proofCreatedAtUtc = proofCreatedAtForProof(proof, artifact);
   const artifactHashB64 = sha256B64(JSON.stringify(artifact));
   const verifier = await safeVerifyArtifact(env.verifierUrl, artifact);
-  const verification = sourceDomain
-    ? { ...verifier, sourceDomain }
-    : verifier;
+  const verification = {
+    ...verifier,
+    ...(sourceDomain ? { sourceDomain } : {}),
+    ...(proofCreatedAtUtc ? { proofCreatedAtUtc } : {})
+  };
   const viewAfter = await store.consumeShareView(token);
   const receiptPayload = {
     tokenId: token,
     proofId: share.proofId,
     artifactHash: artifactHashB64,
     sourceDomain,
+    proofCreatedAtUtc,
     verifierResult: verification,
     verifiedAt: new Date().toISOString()
   };
@@ -359,7 +363,10 @@ async function verifyToken(token) {
         : verifier.reason ?? 'Proof verification failed',
       verification,
       scopedClaims,
-      share: summarizeShare(viewAfter ?? share, { sourceDomain }),
+      share: summarizeShare(viewAfter ?? share, {
+        sourceDomain,
+        proofCreatedAtUtc
+      }),
       receipt: {
         ...receiptPayload,
         signature: receiptToken
@@ -368,15 +375,42 @@ async function verifyToken(token) {
   };
 }
 
-function summarizeShare(share, { sourceDomain = '' } = {}) {
+function summarizeShare(
+  share,
+  { sourceDomain = '', proofCreatedAtUtc = '' } = {}
+) {
   return {
     policyTemplate: share.policyTemplate,
     expiresAtUtc: share.expiresAtUtc,
     oneTimeView: Boolean(share.oneTimeView),
     maxViews: share.maxViews ?? null,
     views: Number(share.views ?? 0),
-    sourceDomain
+    sourceDomain,
+    proofCreatedAtUtc
   };
+}
+
+function proofCreatedAtForProof(proof, artifact) {
+  const metadata = artifact?.metadata;
+  const transcriptSummary = artifact?.transcriptSummary;
+  const candidates = [
+    proof?.declaredCreatedAtUtc,
+    artifact?.proofCreatedAtUtc,
+    artifact?.createdAtUtc,
+    artifact?.createdAt,
+    metadata?.proofCreatedAtUtc,
+    metadata?.createdAtUtc,
+    metadata?.createdAt,
+    transcriptSummary?.proofCreatedAtUtc,
+    transcriptSummary?.createdAtUtc,
+    transcriptSummary?.createdAt,
+    proof?.createdAtUtc
+  ];
+  for (const candidate of candidates) {
+    const timestamp = normalizeTimestamp(candidate);
+    if (timestamp) return timestamp;
+  }
+  return '';
 }
 
 function sourceDomainForProof(proof, artifact) {
@@ -430,6 +464,14 @@ function providerDomainForId(providerId) {
     'uber.past_activities.v1': 'www.uber.com'
   };
   return domains[normalized] ?? '';
+}
+
+function normalizeTimestamp(value) {
+  const source = String(value ?? '').trim();
+  if (!source) return '';
+  const parsed = Date.parse(source);
+  if (Number.isNaN(parsed)) return source;
+  return new Date(parsed).toISOString();
 }
 
 function normalizeProviderDomain(value) {
