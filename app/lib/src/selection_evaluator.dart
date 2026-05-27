@@ -31,10 +31,7 @@ class PredicateResult {
 }
 
 class SelectionEvaluation {
-  const SelectionEvaluation({
-    required this.fields,
-    required this.predicates,
-  });
+  const SelectionEvaluation({required this.fields, required this.predicates});
 
   final List<FieldResult> fields;
   final List<PredicateResult> predicates;
@@ -61,7 +58,7 @@ class SelectionEvaluation {
 /// Looks up a value inside a revealedBody-style map.
 /// Supports keys that are either plain field names, or already JSONPath-shaped
 /// like `$.responseData.demographicsInfo.dob`. For dot-paths we first try the
-/// exact map key (this is how tlsn proofs store them), and fall back to a true
+/// exact map key (some proof payloads store them this way), and fall back to a true
 /// nested lookup if needed.
 Object? lookupValue(Map<String, Object?> revealed, String path) {
   if (revealed.containsKey(path)) {
@@ -149,7 +146,9 @@ int? _dateToYearsTillNow(Object? input) {
   // Try ISO YYYY-MM-DD(THH:MM…) first, then DD-MM-YYYY or DD/MM/YYYY.
   DateTime? date = DateTime.tryParse(raw);
   if (date == null) {
-    final match = RegExp(r'^(\d{1,2})[\-/](\d{1,2})[\-/](\d{4})$').firstMatch(raw);
+    final match = RegExp(
+      r'^(\d{1,2})[\-/](\d{1,2})[\-/](\d{4})$',
+    ).firstMatch(raw);
     if (match != null) {
       final day = int.tryParse(match.group(1)!);
       final month = int.tryParse(match.group(2)!);
@@ -164,7 +163,8 @@ int? _dateToYearsTillNow(Object? input) {
   if (date.isAfter(now)) return null;
   var years = now.year - date.year;
   final hasHadAnniversary =
-      now.month > date.month || (now.month == date.month && now.day >= date.day);
+      now.month > date.month ||
+      (now.month == date.month && now.day >= date.day);
   if (!hasHadAnniversary) years -= 1;
   return years;
 }
@@ -241,26 +241,24 @@ PredicateResult evaluatePredicate(
       satisfied = _compare(transformed, predicate.value) <= 0;
       break;
     case 'between':
-      satisfied = _compare(transformed, predicate.value) >= 0 &&
+      satisfied =
+          _compare(transformed, predicate.value) >= 0 &&
           _compare(transformed, predicate.value2) <= 0;
       break;
     case 'contains':
-      satisfied = transformed
-          .toString()
-          .toLowerCase()
-          .contains((predicate.value ?? '').toString().toLowerCase());
+      satisfied = transformed.toString().toLowerCase().contains(
+        (predicate.value ?? '').toString().toLowerCase(),
+      );
       break;
     case 'startsWith':
-      satisfied = transformed
-          .toString()
-          .toLowerCase()
-          .startsWith((predicate.value ?? '').toString().toLowerCase());
+      satisfied = transformed.toString().toLowerCase().startsWith(
+        (predicate.value ?? '').toString().toLowerCase(),
+      );
       break;
     case 'endsWith':
-      satisfied = transformed
-          .toString()
-          .toLowerCase()
-          .endsWith((predicate.value ?? '').toString().toLowerCase());
+      satisfied = transformed.toString().toLowerCase().endsWith(
+        (predicate.value ?? '').toString().toLowerCase(),
+      );
       break;
     case 'truthy':
       satisfied = _truthy(transformed);

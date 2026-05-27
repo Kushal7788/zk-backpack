@@ -15,7 +15,6 @@ import 'src/selection_evaluator.dart';
 import 'src/share_selection.dart';
 import 'src/share_service_client.dart';
 
-const _brandLogoAssetPath = 'assets/branding/backpack_logo.png';
 const _sharePolicyPresets = <SharePolicyPreset>[
   SharePolicyPreset(
     id: 'one_time',
@@ -44,12 +43,20 @@ const _sharePolicyPresets = <SharePolicyPreset>[
 ];
 const _categoryOrder = <String>[
   'Identity',
-  'Work',
-  'Money',
-  'Travel',
-  'Reputation',
+  'Professional',
+  'Social',
   'General',
 ];
+const _ink = Color(0xFF102A2D);
+const _mutedInk = Color(0xFF60777A);
+const _paper = Color(0xFFF9FCFB);
+const _panel = Color(0xFFF4FAF9);
+const _teal = Color(0xFF0E7490);
+const _tealDark = Color(0xFF0B657B);
+const _mint = Color(0xFFE7F5EF);
+const _green = Color(0xFF0D7943);
+const _line = Color(0xFFCFE2E4);
+const _quietChip = Color(0xFFEAF0F0);
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -62,10 +69,24 @@ class ZkBackpackApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final light = ColorScheme.fromSeed(
-      seedColor: const Color(0xFF0E7490),
-      brightness: Brightness.light,
-    );
+    final light =
+        ColorScheme.fromSeed(
+          seedColor: const Color(0xFF0E7490),
+          brightness: Brightness.light,
+        ).copyWith(
+          primary: _teal,
+          onPrimary: Colors.white,
+          primaryContainer: _mint,
+          onPrimaryContainer: _green,
+          secondary: _green,
+          surface: Colors.white,
+          surfaceContainerLowest: _paper,
+          surfaceContainerHighest: _panel,
+          outline: _line,
+          outlineVariant: _line,
+          onSurface: _ink,
+          onSurfaceVariant: _mutedInk,
+        );
     final dark = ColorScheme.fromSeed(
       seedColor: const Color(0xFF0E7490),
       brightness: Brightness.dark,
@@ -85,38 +106,68 @@ class ZkBackpackApp extends StatelessWidget {
       useMaterial3: true,
       colorScheme: scheme,
       scaffoldBackgroundColor: scheme.surfaceContainerLowest,
+      textTheme: ThemeData(colorScheme: scheme, useMaterial3: true).textTheme
+          .apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface),
       appBarTheme: AppBarTheme(
         elevation: 0,
         centerTitle: false,
-        backgroundColor: scheme.surface,
+        backgroundColor: Colors.transparent,
         foregroundColor: scheme.onSurface,
       ),
       cardTheme: CardThemeData(
         elevation: 0,
         color: scheme.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         margin: EdgeInsets.zero,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: scheme.surface,
+        fillColor: scheme.surface.withValues(alpha: 0.92),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           borderSide: BorderSide(color: scheme.outlineVariant),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           borderSide: BorderSide(color: scheme.primary, width: 1.5),
         ),
       ),
-      navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: scheme.surface,
-        indicatorColor: scheme.primaryContainer,
-        elevation: 0,
-      ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          minimumSize: const Size(48, 54),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          textStyle: const TextStyle(fontWeight: FontWeight.w800),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(48, 54),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          side: BorderSide(color: scheme.outlineVariant),
+          textStyle: const TextStyle(fontWeight: FontWeight.w800),
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        side: BorderSide.none,
+        labelStyle: TextStyle(
+          color: scheme.onSurface,
+          fontWeight: FontWeight.w700,
+        ),
+        selectedColor: scheme.primary,
+        backgroundColor: _quietChip,
       ),
     );
   }
@@ -389,7 +440,8 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
         context: context,
         isScrollControlled: true,
         useSafeArea: true,
-        showDragHandle: true,
+        showDragHandle: false,
+        backgroundColor: Colors.transparent,
         builder: (sheetContext) {
           final recipes = _shareRecipes
               .where((recipe) => recipe.providerIds.contains(record.providerId))
@@ -445,101 +497,169 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
           final double qrSide = (mediaWidth.clamp(220.0, 320.0) - 80)
               .toDouble();
           return Dialog(
+            elevation: 0,
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 28,
+            ),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 360),
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        const CircleAvatar(
-                          radius: 18,
-                          backgroundImage: AssetImage(_brandLogoAssetPath),
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          'Share from Backpack',
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                      ],
+              constraints: const BoxConstraints(maxWidth: 390),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(34),
+                  border: Border.all(color: _line),
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(
+                      color: _teal.withValues(alpha: 0.14),
+                      blurRadius: 42,
+                      offset: const Offset(0, 18),
                     ),
-                    const SizedBox(height: 14),
-                    Center(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: scheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(10),
-                          child: SizedBox(
-                            width: qrSide,
-                            height: qrSide,
-                            child: QrImageView(
-                              data: shareResult.url,
-                              backgroundColor: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    InkWell(
-                      onTap: () => _openExternalLink(shareResult.url),
-                      borderRadius: BorderRadius.circular(8),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 2,
-                        ),
-                        child: Text(
-                          shareResult.url,
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: scheme.primary,
-                                decoration: TextDecoration.underline,
-                              ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: scheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(22),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Row(
                         children: <Widget>[
-                          Text(
-                            policy.label,
-                            style: Theme.of(context).textTheme.labelLarge,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _sharePolicySummary(
-                              policy,
-                              expiresAtUtc: shareResult.expiresAtUtc,
+                          const _LogoMark(size: 44),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  'Share QR ready',
+                                  style: Theme.of(context).textTheme.titleLarge
+                                      ?.copyWith(
+                                        color: _ink,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Only selected details are released',
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(color: _mutedInk),
+                                ),
+                              ],
                             ),
-                            style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: FilledButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Done'),
+                      const SizedBox(height: 18),
+                      Center(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: _panel,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: _line),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(14),
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(8),
+                                child: SizedBox(
+                                  width: qrSide,
+                                  height: qrSide,
+                                  child: QrImageView(
+                                    data: shareResult.url,
+                                    backgroundColor: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 14),
+                      InkWell(
+                        onTap: () => _openExternalLink(shareResult.url),
+                        borderRadius: BorderRadius.circular(18),
+                        child: Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: _quietChip,
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          child: Text(
+                            shareResult.url,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: scheme.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: _mint,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: _line),
+                        ),
+                        padding: const EdgeInsets.all(14),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            const Icon(Icons.lock_clock_rounded, color: _green),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Text(
+                                    policy.label,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelLarge
+                                        ?.copyWith(
+                                          color: _ink,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _sharePolicySummary(
+                                      policy,
+                                      expiresAtUtc: shareResult.expiresAtUtc,
+                                    ),
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(color: _mutedInk),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text('Done'),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -829,6 +949,8 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
         return Icons.business_center_outlined;
       case 'money':
         return Icons.account_balance_wallet_outlined;
+      case 'food':
+        return Icons.receipt_long_outlined;
       case 'travel':
         return Icons.airport_shuttle_outlined;
       case 'reputation':
@@ -839,25 +961,20 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
   }
 
   IconData _iconForCategory(String category) {
+    switch (category) {
+      case 'Identity':
+        return Icons.badge_outlined;
+      case 'Professional':
+        return Icons.business_center_outlined;
+      case 'Social':
+        return Icons.groups_2_outlined;
+    }
     for (final provider in _providers) {
       if (provider.category == category) {
         return _iconForKey(provider.iconKey);
       }
     }
-    switch (category) {
-      case 'Identity':
-        return Icons.badge_outlined;
-      case 'Work':
-        return Icons.business_center_outlined;
-      case 'Money':
-        return Icons.account_balance_wallet_outlined;
-      case 'Travel':
-        return Icons.airport_shuttle_outlined;
-      case 'Reputation':
-        return Icons.workspace_premium_outlined;
-      default:
-        return Icons.inventory_2_outlined;
-    }
+    return Icons.inventory_2_outlined;
   }
 
   List<String> _orderedCategoryKeys(Iterable<String> categories) {
@@ -882,15 +999,6 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
       grouped
           .putIfAbsent(provider.category, () => <ProviderConfig>[])
           .add(provider);
-    }
-    return grouped;
-  }
-
-  Map<String, List<ProofRecord>> _proofsByCategory() {
-    final grouped = <String, List<ProofRecord>>{};
-    for (final proof in _proofs) {
-      final category = _providerCategory(proof.providerId);
-      grouped.putIfAbsent(category, () => <ProofRecord>[]).add(proof);
     }
     return grouped;
   }
@@ -944,57 +1052,51 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     return Scaffold(
-      appBar: AppBar(
-        titleSpacing: 8,
-        title: Row(
-          children: <Widget>[
-            const CircleAvatar(
-              radius: 16,
-              backgroundImage: AssetImage(_brandLogoAssetPath),
-            ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'ZK Backpack',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                Text(
-                  _statusMessage,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
-            ),
-          ],
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: <Color>[Color(0xFFE7F4F5), Color(0xFFF7FBFA)],
+          ),
         ),
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tabIndex,
-        onDestinationSelected: _onDestinationSelected,
-        destinations: const <NavigationDestination>[
-          NavigationDestination(
-            icon: Icon(Icons.backpack_outlined),
-            label: 'Vault',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.auto_awesome_outlined),
-            label: 'Add',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.qr_code_scanner_rounded),
-            label: 'Verify',
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 220),
-          child: Padding(
-            key: ValueKey<int>(_tabIndex),
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
-            child: _buildCurrentTab(),
+        child: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 760),
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  18,
+                  22,
+                  18,
+                  bottomInset > 0 ? 8 : 18,
+                ),
+                child: Column(
+                  children: <Widget>[
+                    _BackpackHeader(
+                      status: _running ? _statusMessage : 'Local first',
+                    ),
+                    const SizedBox(height: 24),
+                    _BackpackTabs(
+                      selectedIndex: _tabIndex,
+                      onChanged: _onDestinationSelected,
+                    ),
+                    const SizedBox(height: 24),
+                    Expanded(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 220),
+                        child: KeyedSubtree(
+                          key: ValueKey<int>(_tabIndex),
+                          child: _buildCurrentTab(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
       ),
@@ -1028,12 +1130,16 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text(
-                        'Add a proof',
-                        style: Theme.of(context).textTheme.titleLarge,
+                        'Generate a proof',
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(
+                              color: _ink,
+                              fontWeight: FontWeight.w900,
+                            ),
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        'Choose a source. The proof is saved in your backpack and shared only when you ask.',
+                        'Choose a source. The proof is encrypted in your backpack and shared only when you ask.',
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                       const SizedBox(height: 18),
@@ -1098,8 +1204,10 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                         width: double.infinity,
                         child: FilledButton.icon(
                           onPressed: _running ? null : _generateProof,
-                          icon: const Icon(Icons.auto_awesome),
-                          label: Text(_running ? 'Adding...' : 'Add Proof'),
+                          icon: const Icon(Icons.auto_awesome_rounded),
+                          label: Text(
+                            _running ? 'Generating...' : 'Generate Proof',
+                          ),
                         ),
                       ),
                     ],
@@ -1113,7 +1221,11 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                       children: <Widget>[
                         Text(
                           'Adding proof',
-                          style: Theme.of(context).textTheme.titleMedium,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                color: _ink,
+                              ),
                         ),
                         const SizedBox(height: 12),
                         LinearProgressIndicator(value: _generationPercent),
@@ -1137,229 +1249,80 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
 
   Widget _buildVaultTab() {
     if (_proofs.isEmpty) {
-      return Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 460),
-          child: _SectionCard(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Container(
-                    width: 66,
-                    height: 66,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: Image(image: AssetImage(_brandLogoAssetPath)),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    'Your backpack is empty',
-                    style: Theme.of(context).textTheme.titleLarge,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Add your first proof from a source you trust.',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  FilledButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        _tabIndex = 1;
-                      });
-                    },
-                    icon: const Icon(Icons.auto_awesome_rounded),
-                    label: const Text('Add Proof'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-    final groupedProofs = _proofsByCategory();
-    final categories = _orderedCategoryKeys(groupedProofs.keys);
-    final entries = <Object>[];
-    for (final category in categories) {
-      entries
-        ..add(category)
-        ..addAll(groupedProofs[category]!);
-    }
-    return Stack(
-      children: <Widget>[
-        ListView.separated(
-          itemCount: entries.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 10),
-          itemBuilder: (context, index) {
-            final entry = entries[index];
-            if (entry is String) {
-              final count = groupedProofs[entry]!.length;
-              return Padding(
-                padding: EdgeInsets.only(top: index == 0 ? 0 : 6),
-                child: _CategoryHeader(
-                  icon: _iconForCategory(entry),
-                  title: entry,
-                  subtitle: '$count proof${count == 1 ? '' : 's'}',
-                ),
-              );
-            }
-            final proof = entry as ProofRecord;
-            final view = _proofPresentationById[proof.proofId];
-            final providerLabel = _providerLabel(proof.providerId);
-            final expanded = _expandedProofIds.contains(proof.proofId);
-            return _SectionCard(
-              child: Column(
-                children: <Widget>[
-                  InkWell(
-                    borderRadius: BorderRadius.circular(14),
-                    onTap: () => _toggleProofExpanded(proof.proofId),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2),
-                      child: Row(
-                        children: <Widget>[
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: <Widget>[
-                                Text(
-                                  providerLabel,
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.titleMedium,
-                                ),
-                                if (_providerById[proof.providerId]?.description
-                                        .trim()
-                                        .isNotEmpty ==
-                                    true) ...<Widget>[
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    _providerById[proof.providerId]!
-                                        .description,
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.bodySmall,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                                const SizedBox(height: 3),
-                                Text(
-                                  expanded
-                                      ? 'Tap to hide details'
-                                      : 'Tap to view details',
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                              ],
-                            ),
-                          ),
-                          Icon(
-                            expanded
-                                ? Icons.keyboard_arrow_up_rounded
-                                : Icons.keyboard_arrow_down_rounded,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _ProofLifecycleTimeline(record: proof),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+      return ListView(
+        padding: const EdgeInsets.only(bottom: 24),
+        children: <Widget>[
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: _SectionCard(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
-                      IconButton.filledTonal(
-                        tooltip: 'Share',
-                        onPressed: () => _uploadAndShare(proof),
-                        style: IconButton.styleFrom(
-                          minimumSize: const Size(34, 34),
-                          padding: const EdgeInsets.all(6),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        icon: const Icon(Icons.share_rounded, size: 18),
+                      const _LogoMark(size: 70),
+                      const SizedBox(height: 18),
+                      Text(
+                        'Your backpack is empty',
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              color: _ink,
+                            ),
+                        textAlign: TextAlign.center,
                       ),
-                      const SizedBox(width: 6),
-                      IconButton.filledTonal(
-                        tooltip: 'Revoke share',
-                        onPressed:
-                            proof.shareStatus == 'shared' &&
-                                proof.shareToken != null
-                            ? () => _revokeShare(proof)
-                            : null,
-                        style: IconButton.styleFrom(
-                          minimumSize: const Size(34, 34),
-                          padding: const EdgeInsets.all(6),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        icon: const Icon(Icons.block_rounded, size: 18),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Generate your first proof and keep it encrypted locally until you choose to share.',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                        textAlign: TextAlign.center,
                       ),
-                      const SizedBox(width: 6),
-                      IconButton.filledTonal(
-                        tooltip: 'Delete proof',
-                        onPressed: () => _confirmAndDelete(proof),
-                        style: IconButton.styleFrom(
-                          minimumSize: const Size(34, 34),
-                          padding: const EdgeInsets.all(6),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        icon: const Icon(
-                          Icons.delete_outline_rounded,
-                          size: 18,
-                        ),
+                      const SizedBox(height: 20),
+                      FilledButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            _tabIndex = 1;
+                          });
+                        },
+                        icon: const Icon(Icons.auto_awesome_rounded),
+                        label: const Text('Generate Proof'),
                       ),
                     ],
                   ),
-                  if (expanded) ...<Widget>[
-                    const SizedBox(height: 10),
-                    _LabeledValueRow(
-                      label: 'Created',
-                      value: _formatDate(proof.createdAtUtc),
-                    ),
-                    const SizedBox(height: 7),
-                    _LabeledValueRow(
-                      label: 'Source',
-                      value: view?.targetEndpoint ?? proof.targetHost,
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Saved details',
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                    const SizedBox(height: 8),
-                    if (view == null || !view.loadedSuccessfully)
-                      Text(
-                        'Saved details unavailable for this proof.',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      )
-                    else if (view.revealedEntries.isEmpty)
-                      Text(
-                        'No saved details for this proof.',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      )
-                    else
-                      ...view.revealedEntries.map(
-                        (entry) => Padding(
-                          padding: const EdgeInsets.only(bottom: 7),
-                          child: _LabeledValueRow(
-                            label: entry.label,
-                            value: entry.value,
-                          ),
-                        ),
-                      ),
-                  ],
-                ],
+                ),
               ),
-            );
-          },
+            ),
+          ),
+        ],
+      );
+    }
+    return Stack(
+      children: <Widget>[
+        ListView(
+          padding: const EdgeInsets.only(bottom: 24),
+          children: <Widget>[
+            for (final proof in _proofs) ...<Widget>[
+              _ProofVaultCard(
+                record: proof,
+                providerLabel: _providerLabel(proof.providerId),
+                providerDescription:
+                    _providerById[proof.providerId]?.description ?? '',
+                category: _providerCategory(proof.providerId),
+                view: _proofPresentationById[proof.proofId],
+                expanded: _expandedProofIds.contains(proof.proofId),
+                createdLabel: _formatDate(proof.createdAtUtc),
+                onToggle: () => _toggleProofExpanded(proof.proofId),
+                onShare: () => _uploadAndShare(proof),
+                onRevoke:
+                    proof.shareStatus == 'shared' && proof.shareToken != null
+                    ? () => _revokeShare(proof)
+                    : null,
+                onDelete: () => _confirmAndDelete(proof),
+              ),
+              const SizedBox(height: 18),
+            ],
+          ],
         ),
         if (_loadingVaultCards)
           Positioned.fill(
@@ -1387,20 +1350,23 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Text(
-                'Check a shared proof',
-                style: Theme.of(context).textTheme.titleLarge,
+                'Scan a shared proof',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  color: _ink,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
               const SizedBox(height: 6),
               Text(
-                'Paste a share link to see whether it is still valid and what it reveals.',
+                'Paste a share link or token to verify the proof and review only the released details.',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _shareTokenController,
                 decoration: const InputDecoration(
-                  labelText: 'Share link',
-                  prefixIcon: Icon(Icons.link),
+                  labelText: 'Share link or token',
+                  prefixIcon: Icon(Icons.link_rounded),
                 ),
               ),
               const SizedBox(height: 12),
@@ -1417,7 +1383,7 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
                         unawaited(_openShareInBrowserView(token));
                       },
                 icon: const Icon(Icons.verified),
-                label: const Text('Check Link'),
+                label: const Text('Verify Proof'),
               ),
             ],
           ),
@@ -1448,6 +1414,7 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
     final status = result.status.toLowerCase();
     final isValid = status == 'valid';
     final statusColor = isValid ? scheme.primary : scheme.error;
+    final verifiedAt = _certificateVerifiedAt(result);
     final fallbackEntries =
         result.revealedFields.isEmpty && result.revealedPredicates.isEmpty
         ? _extractRevealedEntries(result.scopedClaims)
@@ -1509,31 +1476,42 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
             ),
           ),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: <Widget>[
-              _CertificateFact(
-                icon: Icons.public_rounded,
-                label: 'Source',
-                value: _certificateSource(result),
-              ),
-              _CertificateFact(
-                icon: Icons.schedule_rounded,
-                label: 'Checked',
-                value: _certificateCheckedAt(result),
-              ),
-              _CertificateFact(
-                icon: Icons.lock_open_rounded,
-                label: 'Access',
-                value: _certificateAccessSummary(result),
-              ),
-              _CertificateFact(
-                icon: Icons.visibility_rounded,
-                label: 'Shows',
-                value: _certificateRevealSummary(result, fallbackEntries),
-              ),
-            ],
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: _panel,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: _line),
+            ),
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              children: <Widget>[
+                _CertificateDetailRow(
+                  icon: Icons.public_rounded,
+                  label: 'Data source',
+                  value: _certificateSource(result),
+                ),
+                const Divider(height: 18, color: _line),
+                _CertificateDetailRow(
+                  icon: Icons.schedule_rounded,
+                  label: 'Verified at',
+                  value: verifiedAt.timestamp,
+                  subtitle: verifiedAt.relative,
+                ),
+                const Divider(height: 18, color: _line),
+                _CertificateDetailRow(
+                  icon: Icons.lock_open_rounded,
+                  label: 'Access',
+                  value: _certificateAccessSummary(result),
+                ),
+                const Divider(height: 18, color: _line),
+                _CertificateDetailRow(
+                  icon: Icons.visibility_rounded,
+                  label: 'Shows',
+                  value: _certificateRevealSummary(result, fallbackEntries),
+                ),
+              ],
+            ),
           ),
           if (result.revealedFields.isNotEmpty) ...<Widget>[
             const SizedBox(height: 14),
@@ -1601,10 +1579,20 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
     final verification = result.verification;
     final candidates = <Object?>[
       result.share['sourceDomain'],
+      result.share['dataSource'],
+      result.share['domain'],
       result.share['targetHost'],
       result.receipt['sourceDomain'],
+      result.receipt['dataSource'],
+      result.receipt['domain'],
       if (verifierResult is Map<String, Object?>) verifierResult['targetHost'],
       if (verifierResult is Map<String, Object?>) verifierResult['host'],
+      if (verifierResult is Map<String, Object?>)
+        verifierResult['sourceDomain'],
+      if (verifierResult is Map<String, Object?>) verifierResult['dataSource'],
+      verification['sourceDomain'],
+      verification['dataSource'],
+      verification['domain'],
       verification['targetHost'],
       verification['host'],
     ];
@@ -1615,10 +1603,23 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
     return 'Not shown';
   }
 
-  String _certificateCheckedAt(ShareViewResponse result) {
-    final checkedAt = _stringValue(result.receipt['verifiedAt']);
-    if (checkedAt.isEmpty) return 'Just now';
-    return _humanizeIsoDate(checkedAt) ?? checkedAt;
+  _CertificateTimestamp _certificateVerifiedAt(ShareViewResponse result) {
+    final checkedAt = _firstStringValue(<Object?>[
+      result.receipt['verifiedAt'],
+      result.verification['verifiedAt'],
+      result.share['verifiedAt'],
+    ]);
+    if (checkedAt.isEmpty) {
+      return const _CertificateTimestamp(timestamp: 'Just now', relative: '');
+    }
+    final parsed = DateTime.tryParse(checkedAt);
+    if (parsed == null) {
+      return _CertificateTimestamp(timestamp: checkedAt, relative: '');
+    }
+    return _CertificateTimestamp(
+      timestamp: _humanizeIsoDate(checkedAt) ?? checkedAt,
+      relative: _relativeAgeLabel(parsed),
+    );
   }
 
   String _certificateAccessSummary(ShareViewResponse result) {
@@ -1665,6 +1666,33 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
     return value.toString().trim();
   }
 
+  String _firstStringValue(List<Object?> values) {
+    for (final value in values) {
+      final text = _stringValue(value);
+      if (text.isNotEmpty) return text;
+    }
+    return '';
+  }
+
+  String _relativeAgeLabel(DateTime dateTime) {
+    final local = dateTime.toLocal();
+    var difference = DateTime.now().difference(local);
+    if (difference.isNegative) {
+      difference = Duration.zero;
+    }
+    final minutes = difference.inMinutes;
+    if (minutes <= 0) return 'Just now';
+    if (minutes <= 60) {
+      return '$minutes min${minutes == 1 ? '' : 's'} ago';
+    }
+    final hours = difference.inHours;
+    if (hours < 24) {
+      return '$hours hour${hours == 1 ? '' : 's'} ago';
+    }
+    final days = difference.inDays;
+    return '$days day${days == 1 ? '' : 's'} ago';
+  }
+
   String _providerDomainValue(Object? value) {
     var source = _stringValue(value);
     if (source.isEmpty) return '';
@@ -1699,6 +1727,214 @@ class _ZkBackpackHomePageState extends State<ZkBackpackHomePage> {
   }
 }
 
+class _BackpackHeader extends StatelessWidget {
+  const _BackpackHeader({required this.status});
+
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Row(
+      children: <Widget>[
+        const _LogoMark(size: 58),
+        const SizedBox(width: 18),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                'ZK Backpack',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: textTheme.headlineSmall?.copyWith(
+                  color: _ink,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Private proof vault',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: textTheme.titleMedium?.copyWith(
+                  color: _mutedInk,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 160),
+          child: _SoftPill(
+            label: status,
+            foreground: _tealDark,
+            background: Colors.white.withValues(alpha: 0.45),
+            border: _line,
+            horizontalPadding: 18,
+            verticalPadding: 11,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LogoMark extends StatelessWidget {
+  const _LogoMark({this.size = 44});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: _teal,
+        borderRadius: BorderRadius.circular(size * 0.28),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: _teal.withValues(alpha: 0.14),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        'ZK',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: size * 0.42,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0,
+        ),
+      ),
+    );
+  }
+}
+
+class _BackpackTabs extends StatelessWidget {
+  const _BackpackTabs({required this.selectedIndex, required this.onChanged});
+
+  final int selectedIndex;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final labels = const <String>['Vault', 'Generate', 'Scan'];
+    return Container(
+      height: 86,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(31),
+        border: Border.all(color: _line, width: 1.5),
+      ),
+      padding: const EdgeInsets.all(7),
+      child: Row(
+        children: <Widget>[
+          for (var i = 0; i < labels.length; i++)
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(right: i == labels.length - 1 ? 0 : 6),
+                child: _BackpackTabButton(
+                  label: labels[i],
+                  selected: i == selectedIndex,
+                  onTap: () => onChanged(i),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BackpackTabButton extends StatelessWidget {
+  const _BackpackTabButton({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(24),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        height: double.infinity,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? _teal : Colors.transparent,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            color: selected ? Colors.white : _mutedInk,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SoftPill extends StatelessWidget {
+  const _SoftPill({
+    required this.label,
+    this.foreground = _green,
+    this.background = _mint,
+    this.border,
+    this.horizontalPadding = 14,
+    this.verticalPadding = 8,
+  });
+
+  final String label;
+  final Color foreground;
+  final Color background;
+  final Color? border;
+  final double horizontalPadding;
+  final double verticalPadding;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+        border: border == null ? null : Border.all(color: border!),
+      ),
+      padding: EdgeInsets.symmetric(
+        horizontal: horizontalPadding,
+        vertical: verticalPadding,
+      ),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+          color: foreground,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
 class _SectionCard extends StatelessWidget {
   const _SectionCard({required this.child});
 
@@ -1706,62 +1942,104 @@ class _SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(padding: const EdgeInsets.all(14), child: child),
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: _line.withValues(alpha: 0.82)),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: _teal.withValues(alpha: 0.07),
+            blurRadius: 34,
+            offset: const Offset(0, 18),
+          ),
+        ],
+      ),
+      child: Padding(padding: const EdgeInsets.all(22), child: child),
     );
   }
 }
 
-class _CertificateFact extends StatelessWidget {
-  const _CertificateFact({
+class _CertificateTimestamp {
+  const _CertificateTimestamp({
+    required this.timestamp,
+    required this.relative,
+  });
+
+  final String timestamp;
+  final String relative;
+}
+
+class _CertificateDetailRow extends StatelessWidget {
+  const _CertificateDetailRow({
     required this.icon,
     required this.label,
     required this.value,
+    this.subtitle = '',
   });
 
   final IconData icon;
   final String label;
   final String value;
+  final String subtitle;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    return Container(
-      constraints: const BoxConstraints(minWidth: 132, maxWidth: 230),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Icon(icon, size: 18, color: scheme.primary),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(13),
+            border: Border.all(color: _line),
+          ),
+          child: Icon(icon, size: 19, color: _teal),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: textTheme.labelMedium?.copyWith(
+                  color: _mutedInk,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                value,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: textTheme.titleSmall?.copyWith(
+                  color: _ink,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              if (subtitle.isNotEmpty) ...<Widget>[
+                const SizedBox(height: 2),
                 Text(
-                  label,
+                  subtitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: textTheme.labelSmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: _tealDark,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(value, style: textTheme.bodySmall),
               ],
-            ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -1782,10 +2060,25 @@ class _CategoryHeader extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Row(
       children: <Widget>[
-        Icon(icon, size: 18, color: scheme.primary),
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: _mint,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, size: 18, color: _teal),
+        ),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(title, style: Theme.of(context).textTheme.titleSmall),
+          child: Text(
+            title.toUpperCase(),
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: _mutedInk,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.1,
+            ),
+          ),
         ),
         Text(
           subtitle,
@@ -1815,55 +2108,381 @@ class _ProviderChoiceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final borderColor = selected ? scheme.primary : scheme.outlineVariant;
-    final background = selected
-        ? scheme.primaryContainer.withValues(alpha: 0.38)
-        : scheme.surfaceContainerLowest;
+    final borderColor = selected ? _teal : _line;
+    final background = selected ? _mint : Colors.white.withValues(alpha: 0.72);
     return InkWell(
       onTap: enabled ? onTap : null,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(22),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 140),
         width: double.infinity,
         decoration: BoxDecoration(
           color: background,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(22),
           border: Border.all(color: borderColor),
         ),
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Icon(
-              icon,
-              size: 20,
-              color: selected ? scheme.primary : scheme.outline,
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: selected ? _teal : _quietChip,
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Icon(
+                icon,
+                size: 22,
+                color: selected ? Colors.white : _mutedInk,
+              ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Text(
                     provider.label,
-                    style: Theme.of(context).textTheme.titleSmall,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: _ink,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   Text(
                     provider.description,
-                    style: Theme.of(context).textTheme.bodySmall,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: _mutedInk),
                   ),
                 ],
               ),
             ),
             if (selected) ...<Widget>[
               const SizedBox(width: 8),
-              Icon(Icons.check_circle_rounded, size: 18, color: scheme.primary),
+              Icon(Icons.check_circle_rounded, size: 22, color: _green),
             ],
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ProofVaultCard extends StatelessWidget {
+  const _ProofVaultCard({
+    required this.record,
+    required this.providerLabel,
+    required this.providerDescription,
+    required this.category,
+    required this.view,
+    required this.expanded,
+    required this.createdLabel,
+    required this.onToggle,
+    required this.onShare,
+    required this.onRevoke,
+    required this.onDelete,
+  });
+
+  final ProofRecord record;
+  final String providerLabel;
+  final String providerDescription;
+  final String category;
+  final _ProofPresentation? view;
+  final bool expanded;
+  final String createdLabel;
+  final VoidCallback onToggle;
+  final VoidCallback onShare;
+  final VoidCallback? onRevoke;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = _proofCardTitle(providerLabel, category);
+    final endpoint = _friendlyEndpoint(
+      view?.targetEndpoint ?? record.targetHost,
+    );
+    final previewEntries =
+        view?.revealedEntries.take(2).toList(growable: false) ??
+        const <_DisplayEntry>[];
+    final hasShared =
+        record.shareStatus == 'shared' || record.shareToken != null;
+    final hasUploaded =
+        record.cloudProofId != null ||
+        hasShared ||
+        record.shareStatus == 'uploaded';
+    final revoked = record.shareStatus == 'revoked';
+    final compactActionStyle = FilledButton.styleFrom(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+    );
+
+    return _SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          InkWell(
+            onTap: onToggle,
+            borderRadius: BorderRadius.circular(22),
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          category.toUpperCase(),
+                          style: Theme.of(context).textTheme.labelMedium
+                              ?.copyWith(
+                                color: _mutedInk,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.1,
+                              ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          title,
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
+                                color: _ink,
+                                fontWeight: FontWeight.w900,
+                                height: 1.08,
+                              ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          endpoint.isEmpty ? providerDescription : endpoint,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: _mutedInk,
+                                fontWeight: FontWeight.w500,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: <Widget>[
+                      const _SoftPill(
+                        label: 'Proof',
+                        foreground: _tealDark,
+                        background: Colors.white,
+                        border: _line,
+                        horizontalPadding: 16,
+                        verticalPadding: 9,
+                      ),
+                      const SizedBox(height: 8),
+                      IconButton(
+                        tooltip: 'Delete proof',
+                        onPressed: onDelete,
+                        style: IconButton.styleFrom(
+                          backgroundColor: _quietChip,
+                          foregroundColor: _mutedInk,
+                        ),
+                        icon: const Icon(Icons.delete_outline_rounded),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 10,
+            runSpacing: 8,
+            children: <Widget>[
+              const _SoftPill(label: 'Local'),
+              _SoftPill(
+                label: 'Uploaded',
+                foreground: hasUploaded ? _green : _mutedInk,
+                background: hasUploaded ? _mint : _quietChip,
+              ),
+              _SoftPill(
+                label: revoked ? 'Revoked' : 'Shared',
+                foreground: hasShared && !revoked ? _green : _mutedInk,
+                background: hasShared && !revoked ? _mint : _quietChip,
+              ),
+              _SoftPill(
+                label: revoked ? 'Closed' : 'Revocable',
+                foreground: revoked
+                    ? Theme.of(context).colorScheme.error
+                    : _mutedInk,
+                background: revoked
+                    ? Theme.of(context).colorScheme.errorContainer
+                    : _quietChip,
+              ),
+            ],
+          ),
+          const SizedBox(height: 22),
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: _panel,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: _line),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            child: previewEntries.isEmpty
+                ? _VaultPreviewRow(
+                    label: 'Proof',
+                    value: view?.loadedSuccessfully == false
+                        ? 'Saved details unavailable'
+                        : 'Encrypted locally',
+                  )
+                : Column(
+                    children: <Widget>[
+                      for (
+                        var i = 0;
+                        i < previewEntries.length;
+                        i++
+                      ) ...<Widget>[
+                        _VaultPreviewRow(
+                          label: previewEntries[i].label,
+                          value: previewEntries[i].value,
+                        ),
+                        if (i != previewEntries.length - 1)
+                          const Divider(height: 18, color: _line),
+                      ],
+                    ],
+                  ),
+          ),
+          const SizedBox(height: 22),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              Widget shareButton() {
+                return FilledButton.icon(
+                  onPressed: onShare,
+                  icon: const Icon(Icons.qr_code_2_rounded),
+                  label: const Text('Share QR'),
+                  style: compactActionStyle,
+                );
+              }
+
+              Widget revokeButton() {
+                return FilledButton.tonalIcon(
+                  onPressed: onRevoke,
+                  icon: const Icon(Icons.block_rounded),
+                  label: Text(revoked ? 'Revoked' : 'Revoke'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _quietChip,
+                    foregroundColor: _ink,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                  ),
+                );
+              }
+
+              if (constraints.maxWidth < 300) {
+                return Column(
+                  children: <Widget>[
+                    SizedBox(width: double.infinity, child: shareButton()),
+                    const SizedBox(height: 10),
+                    SizedBox(width: double.infinity, child: revokeButton()),
+                  ],
+                );
+              }
+
+              return Row(
+                children: <Widget>[
+                  Expanded(child: shareButton()),
+                  const SizedBox(width: 12),
+                  Expanded(child: revokeButton()),
+                ],
+              );
+            },
+          ),
+          if (expanded) ...<Widget>[
+            const SizedBox(height: 18),
+            _ProofLifecycleTimeline(record: record),
+            const SizedBox(height: 10),
+            _LabeledValueRow(label: 'Created', value: createdLabel),
+            const SizedBox(height: 8),
+            _LabeledValueRow(label: 'Source', value: endpoint),
+            if (view != null && view!.revealedEntries.length > 2) ...<Widget>[
+              const SizedBox(height: 8),
+              for (final entry in view!.revealedEntries.skip(2))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _LabeledValueRow(
+                    label: entry.label,
+                    value: entry.value,
+                  ),
+                ),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+
+  static String _proofCardTitle(String providerLabel, String category) {
+    final lower = providerLabel.toLowerCase();
+    if (lower.contains('aadhaar')) return 'Aadhaar age proof';
+    if (lower.contains('gusto')) return 'Employment proof';
+    if (lower.contains('deel')) return 'Income proof';
+    if (lower.contains('kaggle')) return 'Reputation proof';
+    if (lower.contains('uber')) return 'Travel activity proof';
+    if (lower.contains('swiggy')) return 'Food order proof';
+    return category == 'General' ? providerLabel : '$providerLabel proof';
+  }
+
+  static String _friendlyEndpoint(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty || trimmed == 'Not available') return '';
+    final withoutMethod = trimmed.replaceFirst(
+      RegExp(
+        r'^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+',
+        caseSensitive: false,
+      ),
+      '',
+    );
+    return withoutMethod.replaceFirst(RegExp(r'^https?://'), '');
+  }
+}
+
+class _VaultPreviewRow extends StatelessWidget {
+  const _VaultPreviewRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: <Widget>[
+        Expanded(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: _mutedInk,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        const SizedBox(width: 16),
+        Flexible(
+          child: Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.right,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: _ink,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -2170,6 +2789,21 @@ class ShareDraft {
   final SharePolicyPreset policy;
 }
 
+String _shareSelectionCountLabel(ShareSelection selection) {
+  final parts = <String>[];
+  if (selection.fields.isNotEmpty) {
+    parts.add(
+      '${selection.fields.length} field${selection.fields.length == 1 ? '' : 's'}',
+    );
+  }
+  if (selection.predicates.isNotEmpty) {
+    parts.add(
+      '${selection.predicates.length} check${selection.predicates.length == 1 ? '' : 's'}',
+    );
+  }
+  return parts.isEmpty ? 'Nothing selected' : parts.join(' + ');
+}
+
 class _ShareSelectionSheet extends StatefulWidget {
   const _ShareSelectionSheet({
     required this.revealedBody,
@@ -2189,6 +2823,7 @@ class _ShareSelectionSheetState extends State<_ShareSelectionSheet> {
   final List<RevealPredicate> _predicates = <RevealPredicate>[];
   SharePolicyPreset _selectedPolicy = _sharePolicyPresets[1];
   String? _selectedRecipeId;
+  bool _customizeOpen = false;
   int _predicateCounter = 0;
 
   @override
@@ -2198,6 +2833,7 @@ class _ShareSelectionSheetState extends State<_ShareSelectionSheet> {
     _fieldSelected = <String, bool>{
       for (final path in _orderedPaths) path: false,
     };
+    _customizeOpen = widget.recipes.isEmpty;
   }
 
   bool get _hasDob => _orderedPaths.any(_looksLikeDob);
@@ -2220,6 +2856,7 @@ class _ShareSelectionSheetState extends State<_ShareSelectionSheet> {
     setState(() {
       _selectedRecipeId = null;
       _predicates.add(predicate);
+      _customizeOpen = true;
     });
   }
 
@@ -2327,6 +2964,32 @@ class _ShareSelectionSheetState extends State<_ShareSelectionSheet> {
     });
   }
 
+  ShareRecipe? get _selectedRecipe {
+    final selectedId = _selectedRecipeId;
+    if (selectedId == null) return null;
+    for (final recipe in widget.recipes) {
+      if (recipe.id == selectedId) return recipe;
+    }
+    return null;
+  }
+
+  void _clearSelection() {
+    setState(() {
+      _selectedRecipeId = null;
+      for (final path in _orderedPaths) {
+        _fieldSelected[path] = false;
+      }
+      _predicates.clear();
+      _customizeOpen = widget.recipes.isEmpty;
+    });
+  }
+
+  String _recipeSummary(ShareRecipe recipe) {
+    final selection = _normalizedRecipeSelection(recipe);
+    if (selection == null) return 'Unavailable';
+    return _shareSelectionCountLabel(selection);
+  }
+
   Future<void> _editPredicate({RevealPredicate? existing}) async {
     final RevealPredicate? built = await showDialog<RevealPredicate>(
       context: context,
@@ -2342,6 +3005,7 @@ class _ShareSelectionSheetState extends State<_ShareSelectionSheet> {
     if (built == null) return;
     setState(() {
       _selectedRecipeId = null;
+      _customizeOpen = true;
       if (existing != null) {
         final index = _predicates.indexWhere((p) => p.id == existing.id);
         if (index >= 0) {
@@ -2367,304 +3031,843 @@ class _ShareSelectionSheetState extends State<_ShareSelectionSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final selection = _currentSelection();
     final preview = evaluateSelection(selection, widget.revealedBody);
     final dobPath = _suggestedDobPath;
+    final selectedRecipe = _selectedRecipe;
     return Padding(
       padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-        top: 4,
+        left: 12,
+        right: 12,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 12,
+        top: 12,
       ),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.85,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(34),
+          border: Border.all(color: _line),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: _teal.withValues(alpha: 0.15),
+              blurRadius: 42,
+              offset: const Offset(0, -12),
+            ),
+          ],
         ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                'Choose what to share',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Only the details and checks you choose will be shown to someone opening the link.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 14),
-              if (widget.recipes.isNotEmpty) ...<Widget>[
-                Text(
-                  'Quick share options',
-                  style: Theme.of(context).textTheme.titleSmall,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(22, 14, 22, 22),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.86,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Center(
+                  child: Container(
+                    width: 48,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: _line,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                const SizedBox(height: 18),
+                Row(
                   children: <Widget>[
-                    for (final recipe in widget.recipes)
-                      Builder(
-                        builder: (context) {
-                          final unavailable = _recipeUnavailableReason(recipe);
-                          final available = unavailable == null;
-                          return ChoiceChip(
-                            label: Text(recipe.label),
-                            selected: _selectedRecipeId == recipe.id,
-                            onSelected: available
-                                ? (_) => _applyRecipe(recipe)
-                                : null,
-                          );
-                        },
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            'Share proof',
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(
+                                  color: _ink,
+                                  fontWeight: FontWeight.w900,
+                                  height: 1.05,
+                                ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            selectedRecipe?.label ?? 'Private by default',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodySmall?.copyWith(color: _mutedInk),
+                          ),
+                        ],
                       ),
+                    ),
+                    const SizedBox(width: 12),
+                    _SoftPill(
+                      label: _shareSelectionCountLabel(selection),
+                      foreground: selection.isEmpty ? _mutedInk : _green,
+                      background: selection.isEmpty ? _quietChip : _mint,
+                      horizontalPadding: 12,
+                      verticalPadding: 7,
+                    ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  _selectedRecipeId == null
-                      ? 'Pick an option to prefill safe details and checks. Disabled options need details this proof does not contain.'
-                      : widget.recipes
-                            .firstWhere(
-                              (recipe) => recipe.id == _selectedRecipeId,
-                            )
-                            .description,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
                 const SizedBox(height: 14),
-              ],
-              Text(
-                'Link access',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: <Widget>[
-                  for (final policy in _sharePolicyPresets)
-                    ChoiceChip(
-                      label: Text(policy.label),
-                      selected: _selectedPolicy.id == policy.id,
-                      onSelected: (_) {
-                        setState(() {
-                          _selectedPolicy = policy;
-                        });
-                      },
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _selectedPolicy.description,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                _sharePolicySummary(_selectedPolicy),
-                style: Theme.of(
-                  context,
-                ).textTheme.labelSmall?.copyWith(color: scheme.primary),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                'Details to show',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 6),
-              ..._orderedPaths.map((path) {
-                final value = widget.revealedBody[path];
-                final selected = _fieldSelected[path] ?? false;
-                return CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  dense: true,
-                  controlAffinity: ListTileControlAffinity.leading,
-                  value: selected,
-                  onChanged: (next) {
-                    setState(() {
-                      _selectedRecipeId = null;
-                      _fieldSelected[path] = next ?? false;
-                    });
-                  },
-                  title: Text(prettifyKey(path)),
-                  subtitle: Text(
-                    prettifyValue(value),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                );
-              }),
-              const SizedBox(height: 12),
-              Row(
-                children: <Widget>[
-                  Text(
-                    'Private checks',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  const Spacer(),
-                  TextButton.icon(
-                    onPressed: () => _editPredicate(),
-                    icon: const Icon(
-                      Icons.add_circle_outline_rounded,
-                      size: 18,
-                    ),
-                    label: const Text('Add check'),
-                  ),
-                ],
-              ),
-              if (_hasDob)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: <Widget>[
-                      for (final threshold in const [18, 21, 60])
-                        ActionChip(
-                          label: Text('Age $threshold+'),
-                          onPressed: () {
-                            _addPredicate(
-                              RevealPredicate(
-                                id: 'p${++_predicateCounter}',
-                                label: 'Age $threshold+',
-                                sourcePath: dobPath!,
-                                transform: 'dateToYearsTillNow',
-                                op: '>=',
-                                value: threshold,
-                              ),
-                            );
-                          },
-                        ),
-                    ],
-                  ),
-                ),
-              if (_predicates.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  child: Text(
-                    'No private checks added.',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ),
-              ..._predicates.map((predicate) {
-                final evaluation = evaluatePredicate(
-                  predicate,
-                  widget.revealedBody,
-                );
-                final color = !evaluation.evaluable
-                    ? scheme.outline
-                    : evaluation.satisfied
-                    ? scheme.primary
-                    : scheme.error;
-                return Card(
-                  margin: const EdgeInsets.symmetric(vertical: 4),
-                  child: ListTile(
-                    leading: Icon(
-                      !evaluation.evaluable
-                          ? Icons.help_outline
-                          : evaluation.satisfied
-                          ? Icons.check_circle_rounded
-                          : Icons.cancel_rounded,
-                      color: color,
-                    ),
-                    title: Text(predicate.label),
-                    subtitle: Text(
-                      evaluation.reason ?? evaluation.expression,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    trailing: Wrap(
-                      spacing: 4,
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        IconButton(
-                          tooltip: 'Edit',
-                          icon: const Icon(Icons.edit_outlined, size: 18),
-                          onPressed: () => _editPredicate(existing: predicate),
+                        if (widget.recipes.isNotEmpty) ...<Widget>[
+                          Row(
+                            children: <Widget>[
+                              Text(
+                                'Preset',
+                                style: Theme.of(context).textTheme.titleSmall
+                                    ?.copyWith(
+                                      color: _ink,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                              ),
+                              const Spacer(),
+                              TextButton.icon(
+                                onPressed: selection.isEmpty
+                                    ? null
+                                    : _clearSelection,
+                                icon: const Icon(
+                                  Icons.refresh_rounded,
+                                  size: 17,
+                                ),
+                                label: const Text('Clear'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: _mutedInk,
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            height: 92,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: widget.recipes.length,
+                              separatorBuilder: (context, index) =>
+                                  const SizedBox(width: 10),
+                              itemBuilder: (context, index) {
+                                final recipe = widget.recipes[index];
+                                final unavailable = _recipeUnavailableReason(
+                                  recipe,
+                                );
+                                final available = unavailable == null;
+                                return _ShareRecipeCard(
+                                  label: recipe.label,
+                                  summary: _recipeSummary(recipe),
+                                  selected: _selectedRecipeId == recipe.id,
+                                  enabled: available,
+                                  onTap: available
+                                      ? () => _applyRecipe(recipe)
+                                      : null,
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                        ],
+                        _SharePreviewPanel(
+                          preview: preview,
+                          policy: _selectedPolicy,
                         ),
-                        IconButton(
-                          tooltip: 'Remove',
-                          icon: const Icon(Icons.close_rounded, size: 18),
-                          onPressed: () {
+                        const SizedBox(height: 14),
+                        Text(
+                          'Link access',
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
+                                color: _ink,
+                                fontWeight: FontWeight.w900,
+                              ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: <Widget>[
+                            for (final policy in _sharePolicyPresets)
+                              ChoiceChip(
+                                label: Text(policy.label),
+                                selected: _selectedPolicy.id == policy.id,
+                                onSelected: (_) {
+                                  setState(() {
+                                    _selectedPolicy = policy;
+                                  });
+                                },
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          _sharePolicySummary(_selectedPolicy),
+                          style: Theme.of(
+                            context,
+                          ).textTheme.labelSmall?.copyWith(color: _tealDark),
+                        ),
+                        const SizedBox(height: 14),
+                        _ShareCustomizePanel(
+                          expanded: _customizeOpen,
+                          selectedFieldCount: selection.fields.length,
+                          checkCount: selection.predicates.length,
+                          onExpansionChanged: (next) {
                             setState(() {
-                              _selectedRecipeId = null;
-                              _predicates.removeWhere(
-                                (p) => p.id == predicate.id,
-                              );
+                              _customizeOpen = next;
                             });
                           },
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                'Fields',
+                                style: Theme.of(context).textTheme.titleSmall
+                                    ?.copyWith(
+                                      color: _ink,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                              ),
+                              const SizedBox(height: 8),
+                              ..._orderedPaths.map((path) {
+                                final value = widget.revealedBody[path];
+                                final selected = _fieldSelected[path] ?? false;
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 10),
+                                  child: _ShareSelectableRow(
+                                    selected: selected,
+                                    title: prettifyKey(path),
+                                    subtitle: prettifyValue(value),
+                                    tag: 'field',
+                                    onTap: () {
+                                      HapticFeedback.selectionClick();
+                                      setState(() {
+                                        _selectedRecipeId = null;
+                                        _fieldSelected[path] = !selected;
+                                      });
+                                    },
+                                  ),
+                                );
+                              }),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: <Widget>[
+                                  Text(
+                                    'Checks',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleSmall
+                                        ?.copyWith(
+                                          color: _ink,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                  ),
+                                  const Spacer(),
+                                  TextButton.icon(
+                                    onPressed: () => _editPredicate(),
+                                    icon: const Icon(
+                                      Icons.add_circle_outline_rounded,
+                                      size: 18,
+                                    ),
+                                    label: const Text('Add check'),
+                                  ),
+                                ],
+                              ),
+                              if (_hasDob)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 6),
+                                  child: Wrap(
+                                    spacing: 6,
+                                    runSpacing: 6,
+                                    children: <Widget>[
+                                      for (final threshold in const [
+                                        18,
+                                        21,
+                                        60,
+                                      ])
+                                        ActionChip(
+                                          label: Text('Age $threshold+'),
+                                          onPressed: () {
+                                            _addPredicate(
+                                              RevealPredicate(
+                                                id: 'p${++_predicateCounter}',
+                                                label: 'Age $threshold+',
+                                                sourcePath: dobPath!,
+                                                transform: 'dateToYearsTillNow',
+                                                op: '>=',
+                                                value: threshold,
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              if (_predicates.isEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 6,
+                                  ),
+                                  child: Text(
+                                    'No checks added.',
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(color: _mutedInk),
+                                  ),
+                                ),
+                              ..._predicates.map((predicate) {
+                                final evaluation = evaluatePredicate(
+                                  predicate,
+                                  widget.revealedBody,
+                                );
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 10),
+                                  child: _SharePredicateDraftCard(
+                                    predicate: predicate,
+                                    evaluation: evaluation,
+                                    onEdit: () =>
+                                        _editPredicate(existing: predicate),
+                                    onRemove: () {
+                                      setState(() {
+                                        _selectedRecipeId = null;
+                                        _predicates.removeWhere(
+                                          (p) => p.id == predicate.id,
+                                        );
+                                      });
+                                    },
+                                  ),
+                                );
+                              }),
+                            ],
+                          ),
                         ),
                       ],
                     ),
                   ),
-                );
-              }),
-              const SizedBox(height: 14),
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: scheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
+                const SizedBox(height: 14),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: selection.isEmpty
+                            ? null
+                            : () => Navigator.of(context).pop(
+                                ShareDraft(
+                                  selection: selection,
+                                  policy: _selectedPolicy,
+                                ),
+                              ),
+                        child: const Text('Create Link'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ShareRecipeCard extends StatelessWidget {
+  const _ShareRecipeCard({
+    required this.label,
+    required this.summary,
+    required this.selected,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final String label;
+  final String summary;
+  final bool selected;
+  final bool enabled;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = enabled ? _ink : _mutedInk.withValues(alpha: 0.68);
+    return Opacity(
+      opacity: enabled ? 1 : 0.58,
+      child: SizedBox(
+        width: 156,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(20),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 140),
+              decoration: BoxDecoration(
+                color: selected ? _mint : _panel,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: selected ? _teal : _line),
+              ),
+              padding: const EdgeInsets.all(13),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Text(
-                        'What they will see',
-                        style: Theme.of(context).textTheme.labelLarge,
-                      ),
-                      const SizedBox(height: 4),
-                      if (preview.fields.isEmpty && preview.predicates.isEmpty)
-                        Text(
-                          'Nothing selected yet.',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ...preview.fields.map(
-                        (field) => Text(
-                          '• ${field.label}: ${_printableValue(field.value)}',
-                          style: Theme.of(context).textTheme.bodySmall,
+                      Expanded(
+                        child: Text(
+                          label,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.labelLarge
+                              ?.copyWith(
+                                color: foreground,
+                                fontWeight: FontWeight.w900,
+                              ),
                         ),
                       ),
-                      ...preview.predicates.map(
-                        (predicate) => Text(
-                          '• ${predicate.label}: ${predicate.satisfied ? 'true' : (predicate.evaluable ? 'false' : 'unknown')}',
-                          style: Theme.of(context).textTheme.bodySmall,
+                      if (selected) ...<Widget>[
+                        const SizedBox(width: 6),
+                        const Icon(
+                          Icons.check_circle_rounded,
+                          color: _green,
+                          size: 18,
                         ),
-                      ),
+                      ],
                     ],
                   ),
-                ),
+                  const SizedBox(height: 6),
+                  Text(
+                    summary,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: _mutedInk),
+                  ),
+                ],
               ),
-              const SizedBox(height: 14),
-              Row(
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ShareCustomizePanel extends StatelessWidget {
+  const _ShareCustomizePanel({
+    required this.expanded,
+    required this.selectedFieldCount,
+    required this.checkCount,
+    required this.onExpansionChanged,
+    required this.child,
+  });
+
+  final bool expanded;
+  final int selectedFieldCount;
+  final int checkCount;
+  final ValueChanged<bool> onExpansionChanged;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final summary = selectedFieldCount == 0 && checkCount == 0
+        ? 'Manual fields and checks'
+        : <String>[
+            if (selectedFieldCount > 0)
+              '$selectedFieldCount field${selectedFieldCount == 1 ? '' : 's'}',
+            if (checkCount > 0)
+              '$checkCount check${checkCount == 1 ? '' : 's'}',
+          ].join(' + ');
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: _line),
+      ),
+      child: Column(
+        children: <Widget>[
+          InkWell(
+            onTap: () => onExpansionChanged(!expanded),
+            borderRadius: BorderRadius.circular(22),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
                 children: <Widget>[
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: _mint,
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                    child: const Icon(
+                      Icons.tune_rounded,
+                      color: _teal,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Cancel'),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          'Customize',
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
+                                color: _ink,
+                                fontWeight: FontWeight.w900,
+                              ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          summary,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodySmall?.copyWith(color: _mutedInk),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: selection.isEmpty
-                          ? null
-                          : () => Navigator.of(context).pop(
-                              ShareDraft(
-                                selection: selection,
-                                policy: _selectedPolicy,
-                              ),
-                            ),
-                      child: const Text('Create Link'),
-                    ),
+                  Icon(
+                    expanded
+                        ? Icons.expand_less_rounded
+                        : Icons.expand_more_rounded,
+                    color: _mutedInk,
                   ),
                 ],
+              ),
+            ),
+          ),
+          if (expanded) ...<Widget>[
+            const Divider(height: 1, color: _line),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+              child: child,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ShareSelectableRow extends StatelessWidget {
+  const _ShareSelectableRow({
+    required this.selected,
+    required this.title,
+    required this.subtitle,
+    required this.tag,
+    required this.onTap,
+  });
+
+  final bool selected;
+  final String title;
+  final String subtitle;
+  final String tag;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          decoration: BoxDecoration(
+            color: selected ? _panel : Colors.white.withValues(alpha: 0.76),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: selected ? _line : _quietChip),
+          ),
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: <Widget>[
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 140),
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: selected ? _teal : _quietChip,
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: Icon(
+                  selected ? Icons.check_rounded : Icons.add_rounded,
+                  color: selected ? Colors.white : _mutedInk,
+                  size: 26,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: _ink,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle.isEmpty ? 'Selected detail' : subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(color: _mutedInk),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              _SoftPill(
+                label: tag,
+                foreground: selected ? _green : _mutedInk,
+                background: selected ? _mint : _quietChip,
+                horizontalPadding: 12,
+                verticalPadding: 7,
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SharePredicateDraftCard extends StatelessWidget {
+  const _SharePredicateDraftCard({
+    required this.predicate,
+    required this.evaluation,
+    required this.onEdit,
+    required this.onRemove,
+  });
+
+  final RevealPredicate predicate;
+  final PredicateResult evaluation;
+  final VoidCallback onEdit;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final color = !evaluation.evaluable
+        ? _mutedInk
+        : evaluation.satisfied
+        ? _green
+        : scheme.error;
+    final icon = !evaluation.evaluable
+        ? Icons.help_outline_rounded
+        : evaluation.satisfied
+        ? Icons.check_rounded
+        : Icons.close_rounded;
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: _panel,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: color.withValues(alpha: 0.28)),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(13),
+            ),
+            child: Icon(icon, color: color, size: 26),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        predicate.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: _ink,
+                              fontWeight: FontWeight.w900,
+                            ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const _SoftPill(
+                      label: 'predicate',
+                      foreground: _green,
+                      background: _mint,
+                      horizontalPadding: 12,
+                      verticalPadding: 7,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  evaluation.reason ?? evaluation.expression,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: _mutedInk),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: <Widget>[
+                    TextButton.icon(
+                      onPressed: onEdit,
+                      icon: const Icon(Icons.edit_outlined, size: 17),
+                      label: const Text('Edit'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: _tealDark,
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: onRemove,
+                      icon: const Icon(Icons.close_rounded, size: 17),
+                      label: const Text('Remove'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: _mutedInk,
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SharePreviewPanel extends StatelessWidget {
+  const _SharePreviewPanel({required this.preview, required this.policy});
+
+  final SelectionEvaluation preview;
+  final SharePolicyPreset policy;
+
+  @override
+  Widget build(BuildContext context) {
+    final empty = preview.fields.isEmpty && preview.predicates.isEmpty;
+    final rows = <_DisplayEntry>[
+      for (final field in preview.fields)
+        _DisplayEntry(label: field.label, value: _printableValue(field.value)),
+      for (final predicate in preview.predicates)
+        _DisplayEntry(
+          label: predicate.label,
+          value: predicate.satisfied
+              ? 'true'
+              : (predicate.evaluable ? 'false' : 'unknown'),
+        ),
+    ];
+    final visibleRows = rows.take(5).toList(growable: false);
+    final remaining = rows.length - visibleRows.length;
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: _panel,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: _line),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.visibility_outlined,
+                  color: _teal,
+                  size: 19,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Shared preview',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: _ink,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              _SoftPill(
+                label: policy.label,
+                foreground: _tealDark,
+                background: Colors.white,
+                border: _line,
+                horizontalPadding: 12,
+                verticalPadding: 7,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (empty)
+            Text(
+              'Nothing selected.',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: _mutedInk),
+            ),
+          for (var i = 0; i < visibleRows.length; i++) ...<Widget>[
+            _VaultPreviewRow(
+              label: visibleRows[i].label,
+              value: visibleRows[i].value,
+            ),
+            if (i != visibleRows.length - 1)
+              const Divider(height: 18, color: _line),
+          ],
+          if (remaining > 0) ...<Widget>[
+            const Divider(height: 18, color: _line),
+            Text(
+              '+$remaining more selected',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: _tealDark,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

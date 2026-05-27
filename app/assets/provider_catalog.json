@@ -2,33 +2,33 @@
   "providers": [
     {
       "label": "Kaggle",
-      "description": "Current user profile proof",
+      "description": "Current user profile",
       "providerId": "kaggle.current_user.v1",
-      "category": "Reputation",
+      "category": "Social",
       "iconKey": "reputation",
-      "recipeIds": ["account_ownership", "developer_reputation"]
+      "recipeIds": ["account_ownership"]
     },
     {
       "label": "Deel",
-      "description": "Paystubs transaction proof",
+      "description": "Paystubs transaction",
       "providerId": "deel.paystubs.v1",
-      "category": "Money",
+      "category": "Professional",
       "iconKey": "money",
       "recipeIds": ["income_threshold"]
     },
     {
       "label": "Gusto",
-      "description": "Employee company name proof",
+      "description": "Employee company name",
       "providerId": "gusto.employees.v1",
-      "category": "Work",
+      "category": "Professional",
       "iconKey": "work",
       "recipeIds": ["employment_status"]
     },
     {
       "label": "Uber Past Rides",
-      "description": "Past rides activities proof",
+      "description": "Past rides activities",
       "providerId": "uber.past_activities.v1",
-      "category": "Travel",
+      "category": "Social",
       "iconKey": "travel",
       "recipeIds": ["travel_activity"]
     },
@@ -39,6 +39,18 @@
       "category": "Identity",
       "iconKey": "identity",
       "recipeIds": ["age_gate_21"]
+    },
+    {
+      "label": "Swiggy Orders",
+      "description": "Last food order receipt",
+      "providerId": "swiggy.orders.v1",
+      "category": "Social",
+      "iconKey": "food",
+      "recipeIds": [
+        "recent_food_order",
+        "swiggy_expense_receipt_lite",
+        "swiggy_delivery_confirmation"
+      ]
     }
   ]
 }

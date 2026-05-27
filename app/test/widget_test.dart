@@ -13,8 +13,9 @@ void main() {
   testWidgets('renders backpack shell', (WidgetTester tester) async {
     await tester.pumpWidget(const ZkBackpackApp());
     expect(find.text('ZK Backpack'), findsOneWidget);
-    expect(find.text('Add'), findsOneWidget);
+    expect(find.text('Private proof vault'), findsOneWidget);
     expect(find.text('Vault'), findsOneWidget);
-    expect(find.text('Verify'), findsOneWidget);
+    expect(find.text('Generate'), findsOneWidget);
+    expect(find.text('Scan'), findsOneWidget);
   });
 }

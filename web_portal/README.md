@@ -79,7 +79,7 @@ cd ../share_service
 node src/server.js
 ```
 
-You'll need both running, plus the TLSN verifier — the portal is just
+You'll need both running, plus the proof verifier. The portal is just
 the recipient view.
 
 ## Cross-origin behaviour

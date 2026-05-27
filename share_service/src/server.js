@@ -36,7 +36,7 @@ const env = {
     process.env.PORTAL_BASE_URL ??
     fileEnv.PORTAL_BASE_URL ??
     'http://localhost:8081',
-  // Required. TLSN verifier service endpoint.
+  // Required. Proof verifier service endpoint.
   verifierUrl: process.env.VERIFIER_URL ?? fileEnv.VERIFIER_URL ?? 'http://localhost:7047',
   // Required. 32-byte base64 envelope key. Service refuses to start if
   // this is missing.
@@ -326,13 +326,16 @@ async function verifyToken(token) {
   const sourceDomain = sourceDomainForProof(proof, artifact);
   const artifactHashB64 = sha256B64(JSON.stringify(artifact));
   const verifier = await safeVerifyArtifact(env.verifierUrl, artifact);
+  const verification = sourceDomain
+    ? { ...verifier, sourceDomain }
+    : verifier;
   const viewAfter = await store.consumeShareView(token);
   const receiptPayload = {
     tokenId: token,
     proofId: share.proofId,
     artifactHash: artifactHashB64,
     sourceDomain,
-    verifierResult: verifier,
+    verifierResult: verification,
     verifiedAt: new Date().toISOString()
   };
   const receiptToken = signReceipt(masterKey, receiptPayload);
@@ -354,7 +357,7 @@ async function verifyToken(token) {
       message: verifier.ok
         ? 'Verified credential'
         : verifier.reason ?? 'Proof verification failed',
-      verification: verifier,
+      verification,
       scopedClaims,
       share: summarizeShare(viewAfter ?? share, { sourceDomain }),
       receipt: {
@@ -377,18 +380,56 @@ function summarizeShare(share, { sourceDomain = '' } = {}) {
 }
 
 function sourceDomainForProof(proof, artifact) {
+  const payload = artifact?.payload;
+  const request = payload?.request;
   const endpoint = artifact?.payload?.request?.endpoint;
+  const metadata = artifact?.metadata;
   const candidates = [
+    artifact?.sourceDomain,
+    artifact?.dataSource,
+    artifact?.domain,
+    artifact?.targetHost,
+    payload?.sourceDomain,
+    payload?.dataSource,
+    payload?.domain,
+    payload?.targetHost,
+    request?.sourceDomain,
+    request?.targetHost,
+    request?.host,
+    request?.url,
     proof?.targetHost,
     artifact?.transcriptSummary?.targetHost,
+    artifact?.transcriptSummary?.serverName,
+    endpoint?.sourceDomain,
+    endpoint?.targetHost,
     endpoint?.host,
-    endpoint?.url
+    endpoint?.url,
+    endpoint?.origin,
+    metadata?.sourceDomain,
+    metadata?.dataSource,
+    metadata?.domain,
+    metadata?.targetHost,
+    metadata?.url,
+    providerDomainForId(proof?.providerId)
   ];
   for (const candidate of candidates) {
     const domain = normalizeProviderDomain(candidate);
     if (domain) return domain;
   }
   return '';
+}
+
+function providerDomainForId(providerId) {
+  const normalized = String(providerId ?? '').trim().toLowerCase();
+  const domains = {
+    'aadhaar.demographics.v1': 'uidai.gov.in',
+    'deel.paystubs.v1': 'app.deel.com',
+    'gusto.employees.v1': 'app.gusto.com',
+    'kaggle.current_user.v1': 'www.kaggle.com',
+    'swiggy.orders.v1': 'www.swiggy.com',
+    'uber.past_activities.v1': 'www.uber.com'
+  };
+  return domains[normalized] ?? '';
 }
 
 function normalizeProviderDomain(value) {

@@ -97,6 +97,32 @@ function humanDate(iso) {
   }
 }
 
+function relativeAge(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const diffMs = Math.max(0, Date.now() - date.getTime());
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes <= 0) return 'Just now';
+  if (minutes <= 60) {
+    return `${minutes} min${minutes === 1 ? '' : 's'} ago`;
+  }
+  const hours = Math.floor(diffMs / 3600000);
+  if (hours < 24) {
+    return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  }
+  const days = Math.floor(diffMs / 86400000);
+  return `${days} day${days === 1 ? '' : 's'} ago`;
+}
+
+function verifiedAtText(value) {
+  if (!value) return '';
+  const absolute = humanDate(value);
+  const relative = relativeAge(value);
+  if (!relative) return absolute;
+  return `${absolute} · ${relative}`;
+}
+
 function shortHash(value) {
   const raw = String(value ?? '').trim();
   if (!raw) return '';
@@ -115,6 +141,103 @@ function formatDurationUntil(iso) {
   if (hours < 36) return `${hours} hour${hours === 1 ? '' : 's'}`;
   const days = Math.ceil(hours / 24);
   return `${days} day${days === 1 ? '' : 's'}`;
+}
+
+function firstStringValue(values) {
+  for (const value of values) {
+    if (typeof value !== 'string') continue;
+    const trimmed = value.trim();
+    if (trimmed) return trimmed;
+  }
+  return '';
+}
+
+function sourceDomainFromPayload(payload) {
+  const share = payload && typeof payload.share === 'object' ? payload.share : {};
+  const receipt =
+    payload && typeof payload.receipt === 'object' ? payload.receipt : {};
+  const verification =
+    payload && typeof payload.verification === 'object' ? payload.verification : {};
+  const verifierResult =
+    receipt && typeof receipt.verifierResult === 'object'
+      ? receipt.verifierResult
+      : {};
+  const raw = firstStringValue([
+    share.sourceDomain,
+    share.dataSource,
+    share.domain,
+    share.targetHost,
+    receipt.sourceDomain,
+    receipt.dataSource,
+    receipt.domain,
+    receipt.targetHost,
+    verifierResult.sourceDomain,
+    verifierResult.dataSource,
+    verifierResult.domain,
+    verifierResult.targetHost,
+    verifierResult.host,
+    verification.sourceDomain,
+    verification.dataSource,
+    verification.domain,
+    verification.targetHost,
+    verification.host
+  ]);
+  return providerDomain(raw) || inferSourceDomainFromClaims(payload);
+}
+
+function verifiedAtFromPayload(payload) {
+  const share = payload && typeof payload.share === 'object' ? payload.share : {};
+  const receipt =
+    payload && typeof payload.receipt === 'object' ? payload.receipt : {};
+  const verification =
+    payload && typeof payload.verification === 'object' ? payload.verification : {};
+  return firstStringValue([
+    receipt.verifiedAt,
+    verification.verifiedAt,
+    share.verifiedAt
+  ]);
+}
+
+function inferSourceDomainFromClaims(payload) {
+  const scopedClaims =
+    payload && typeof payload.scopedClaims === 'object'
+      ? payload.scopedClaims
+      : {};
+  const fields =
+    scopedClaims && typeof scopedClaims.fields === 'object'
+      ? scopedClaims.fields
+      : {};
+  const predicates = Array.isArray(scopedClaims.predicates)
+    ? scopedClaims.predicates
+    : [];
+  const text = [
+    ...Object.keys(fields),
+    ...predicates.flatMap((predicate) => [
+      predicate.id,
+      predicate.label,
+      predicate.expression
+    ])
+  ]
+    .filter((value) => typeof value === 'string')
+    .join(' ')
+    .toLowerCase();
+
+  if (
+    text.includes('swiggy') ||
+    (text.includes('restaurant name') && text.includes('order total'))
+  ) {
+    return 'www.swiggy.com';
+  }
+  if (text.includes('aadhaar') || text.includes('uidai')) {
+    return 'uidai.gov.in';
+  }
+  if (text.includes('kaggle')) {
+    return 'www.kaggle.com';
+  }
+  if (text.includes('uber')) {
+    return 'www.uber.com';
+  }
+  return '';
 }
 
 // Inline SVG strings.
@@ -318,7 +441,11 @@ createApp({
       const rows = [
         {
           label: 'Verification',
-          value: 'Server-verified TLSNotary proof'
+          value: 'Server-verified proof'
+        },
+        {
+          label: 'Data source',
+          value: targetHost.value || 'Not available'
         },
         {
           label: 'Released',
@@ -333,16 +460,10 @@ createApp({
           value: sharePolicySummary.value
         }
       ];
-      if (targetHost.value) {
-        rows.splice(1, 0, {
-          label: 'Source',
-          value: targetHost.value
-        });
-      }
       if (verifiedAt.value) {
         rows.push({
           label: 'Verified at',
-          value: humanDate(verifiedAt.value)
+          value: verifiedAtText(verifiedAt.value)
         });
       }
       const hash = receipt.value && receipt.value.artifactHash;
@@ -360,7 +481,7 @@ createApp({
       const host = targetHost.value;
       if (!at && !host) return '';
       const parts = [];
-      if (at) parts.push(`Verified ${humanDate(at)}`);
+      if (at) parts.push(`Verified ${verifiedAtText(at)}`);
       if (host) parts.push(host);
       return parts.join(' · ');
     });
@@ -408,18 +529,8 @@ createApp({
         claims.value = payload.scopedClaims ?? {};
         receipt.value = payload.receipt ?? {};
         share.value = payload.share ?? {};
-        verifiedAt.value =
-          (payload.receipt && payload.receipt.verifiedAt) || '';
-        // Best-effort source domain extraction.
-        const fromReceipt =
-          payload.receipt && payload.receipt.sourceDomain
-            ? payload.receipt.sourceDomain
-            : null;
-        targetHost.value =
-          providerDomain(payload.share && payload.share.sourceDomain) ||
-          providerDomain(fromReceipt) ||
-          extractHost(payload) ||
-          '';
+        verifiedAt.value = verifiedAtFromPayload(payload);
+        targetHost.value = sourceDomainFromPayload(payload) || extractHost(payload);
       } catch (error) {
         status.value = 'invalid';
         message.value = error instanceof Error ? error.message : String(error);
@@ -431,6 +542,9 @@ createApp({
     function extractHost(payload) {
       const v = payload && payload.verification;
       if (v && typeof v === 'object') {
+        if (typeof v.sourceDomain === 'string') return providerDomain(v.sourceDomain);
+        if (typeof v.dataSource === 'string') return providerDomain(v.dataSource);
+        if (typeof v.domain === 'string') return providerDomain(v.domain);
         if (typeof v.targetHost === 'string') return providerDomain(v.targetHost);
         if (typeof v.host === 'string') return providerDomain(v.host);
       }

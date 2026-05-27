@@ -23,7 +23,7 @@
     {
       "id": "employment_status",
       "label": "Prove employment",
-      "category": "Work",
+      "category": "Professional",
       "providerIds": ["gusto.employees.v1"],
       "description": "Share your employer name and prove the employment record exists.",
       "selection": {
@@ -48,7 +48,7 @@
     {
       "id": "income_threshold",
       "label": "Prove income range",
-      "category": "Money",
+      "category": "Professional",
       "providerIds": ["deel.paystubs.v1"],
       "description": "Prove pay is above a threshold without revealing the exact value.",
       "selection": {
@@ -68,21 +68,29 @@
     {
       "id": "account_ownership",
       "label": "Prove account ownership",
-      "category": "Reputation",
+      "category": "Social",
       "providerIds": ["kaggle.current_user.v1"],
       "description": "Share the public profile handle and prove the account exists.",
       "selection": {
         "fields": [
           {
-            "path": "$.responseData.username",
+            "path": "$.responseData.userName",
             "label": "Username"
+          },
+          {
+            "path": "$.responseData.userId",
+            "label": "User ID"
+          },
+          {
+            "path": "$.responseData.userJoinDate",
+            "label": "Joined"
           }
         ],
         "predicates": [
           {
             "id": "account_exists",
             "label": "Account exists",
-            "sourcePath": "$.responseData.username",
+            "sourcePath": "$.responseData.userName",
             "transform": "identity",
             "op": "truthy",
             "value": true
@@ -93,7 +101,7 @@
     {
       "id": "travel_activity",
       "label": "Prove ride activity",
-      "category": "Travel",
+      "category": "Social",
       "providerIds": ["uber.past_activities.v1"],
       "description": "Prove the account has ride activity without revealing the full trip history.",
       "selection": {
@@ -111,26 +119,107 @@
       }
     },
     {
-      "id": "developer_reputation",
-      "label": "Prove developer reputation",
-      "category": "Reputation",
-      "providerIds": ["kaggle.current_user.v1"],
-      "description": "Share a public profile signal from a developer or data science account.",
+      "id": "recent_food_order",
+      "label": "Prove recent food order",
+      "category": "Social",
+      "providerIds": ["swiggy.orders.v1"],
+      "description": "Share a receipt-style proof for the latest Swiggy order.",
       "selection": {
         "fields": [
           {
-            "path": "$.responseData.displayName",
-            "label": "Display name"
+            "path": "$.data.total_orders",
+            "label": "Total orders"
+          },
+          {
+            "path": "$.data.orders[0].order_delivery_status",
+            "label": "Delivery status"
+          },
+          {
+            "path": "$.data.orders[0].restaurant_name",
+            "label": "Restaurant"
+          },
+          {
+            "path": "$.data.orders[0].order_time",
+            "label": "Order time"
+          },
+          {
+            "path": "$.data.orders[0].order_total_with_tip",
+            "label": "Total paid"
+          },
+          {
+            "path": "$.data.orders[0].delivery_address.address",
+            "label": "Delivery address"
+          },
+          {
+            "path": "$.data.orders[0].payment_method",
+            "label": "Payment method"
+          }
+        ],
+        "predicates": []
+      }
+    },
+    {
+      "id": "swiggy_expense_receipt_lite",
+      "label": "Expense receipt lite",
+      "category": "Money",
+      "providerIds": ["swiggy.orders.v1"],
+      "description": "Share only the restaurant, time, amount, and payment mode for meal reimbursement.",
+      "selection": {
+        "fields": [
+          {
+            "path": "$.data.orders[0].restaurant_name",
+            "label": "Restaurant"
+          },
+          {
+            "path": "$.data.orders[0].order_time",
+            "label": "Order time"
+          },
+          {
+            "path": "$.data.orders[0].order_total_with_tip",
+            "label": "Total paid"
+          },
+          {
+            "path": "$.data.orders[0].payment_method",
+            "label": "Payment method"
           }
         ],
         "predicates": [
           {
-            "id": "profile_exists",
-            "label": "Profile exists",
-            "sourcePath": "$.responseData.displayName",
+            "id": "swiggy_order_delivered_for_expense",
+            "label": "Order was delivered",
+            "sourcePath": "$.data.orders[0].order_delivery_status",
             "transform": "identity",
-            "op": "truthy",
-            "value": true
+            "op": "==",
+            "value": "Delivered"
+          }
+        ]
+      }
+    },
+    {
+      "id": "swiggy_delivery_confirmation",
+      "label": "Delivery confirmation",
+      "category": "Social",
+      "providerIds": ["swiggy.orders.v1"],
+      "description": "Prove the latest order was delivered while keeping address, payment, and full receipt hidden.",
+      "selection": {
+        "fields": [
+          {
+            "path": "$.data.orders[0].restaurant_name",
+            "label": "Restaurant"
+          },
+          {
+            "path": "$.data.orders[0].order_time",
+            "label": "Order time"
+          }
+        ],
+        "predicates": [
+          {
+            "id": "swiggy_latest_order_delivered",
+            "label": "Latest order was delivered",
+            "sourcePath": "$.data.orders[0].order_delivery_status",
+            "transform": "identity",
+            "op": "==",
+            "value": "Delivered"
           }
         ]
       }
